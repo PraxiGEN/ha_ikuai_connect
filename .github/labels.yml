@@ -1,0 +1,19 @@
+- name: "🐛 Bug Fix"
+  color: "d73a4a"
+  description: "Bug fixes and issue corrections / 修复问题和错误"
+
+- name: "✨ Feature"
+  color: "a2eeef"
+  description: "New features and functionality improvements / 新功能和功能增强"
+
+- name: "🔧 Refactor"
+  color: "fbca04"
+  description: "Code refactoring and internal improvements / 代码重构和内部优化"
+
+- name: "⚠️ Breaking"
+  color: "b60205"
+  description: "Breaking changes that may affect existing behavior / 可能影响现有行为的破坏性变更"
+
+- name: "📝 Docs"
+  color: "0075ca"
+  description: "Documentation updates and improvements / 文档更新和改进"
