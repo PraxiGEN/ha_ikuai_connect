@@ -1,19 +1,63 @@
-- name: "🐛 Bug Fix"
-  color: "d73a4a"
-  description: "Bug fixes and issue corrections / 修复问题和错误"
+# ============================
+# Default GitHub Labels
+# ============================
 
-- name: "✨ Feature"
-  color: "a2eeef"
-  description: "New features and functionality improvements / 新功能和功能增强"
+- name: bug
+  color: d73a4a
+  description: Something isn't working
 
-- name: "🔧 Refactor"
-  color: "fbca04"
-  description: "Code refactoring and internal improvements / 代码重构和内部优化"
+- name: documentation
+  color: 0075ca
+  description: Improvements or additions to documentation
 
-- name: "⚠️ Breaking"
-  color: "b60205"
-  description: "Breaking changes that may affect existing behavior / 可能影响现有行为的破坏性变更"
+- name: duplicate
+  color: cfd3d7
+  description: This issue or pull request already exists
 
-- name: "📝 Docs"
-  color: "0075ca"
-  description: "Documentation updates and improvements / 文档更新和改进"
+- name: enhancement
+  color: a2eeef
+  description: New feature or request
+
+- name: good first issue
+  color: 7057ff
+  description: Good for newcomers
+
+- name: help wanted
+  color: 008672
+  description: Extra attention is needed
+
+- name: invalid
+  color: e4e669
+  description: This doesn't seem right
+
+- name: question
+  color: d876e3
+  description: Further information is requested
+
+- name: wontfix
+  color: ffffff
+  description: This will not be worked on
+
+# ============================
+# Custom Labels (Your Labels)
+# ============================
+
+- name: 🐛 Bug Fix
+  color: d73a4a
+  description: Bug fixes and issue corrections / 修复问题和错误
+
+- name: ✨ Feature
+  color: a2eeef
+  description: New features and functionality improvements / 新功能和功能增强
+
+- name: 🔧 Refactor
+  color: fbca04
+  description: Code refactoring and internal improvements / 代码重构和内部优化
+
+- name: ⚠️ Breaking
+  color: b60205
+  description: Breaking changes that may affect existing behavior / 可能影响现有行为的破坏性变更
+
+- name: 📝 Docs
+  color: 0075ca
+  description: Documentation updates and improvements / 文档更新和改进
