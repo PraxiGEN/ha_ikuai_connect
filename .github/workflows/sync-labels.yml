@@ -1,19 +1,25 @@
-name: Sync GitHub Labels
+name: Label Sync
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  issues: write
 
 jobs:
-  sync-labels:
+  labeler:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Sync Labels
+      - name: GitHub Labeler
         uses: crazy-max/ghaction-github-labeler@v5
         with:
-          yaml_file: .github/labels.yml
+          yaml-file: .github/labels.yml
+          skip-delete: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
