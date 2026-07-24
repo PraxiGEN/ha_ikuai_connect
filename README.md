@@ -1,9 +1,8 @@
-# iKuai Connect for Home Assistant
+# <img src="custom_components/ikuai_connect/brand/icon.png" width="64"> iKuai Connect for Home Assistant
 
-[![Release](https://img.shields.io/github/v/release/hzonz/ha_ikuai_connect)](https://github.com/hzonz/ha_ikuai_connect/releases)
-[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/hzonzha_ikuai_connect/blob/main/LICENSE)
+[![Release](https://img.shields.io/github/v/release/PraxiGEN/ha_ikuai_connect)](https://github.com/PraxiGEN/ha_ikuai_connect/releases)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/PraxiGENha_ikuai_connect/blob/main/LICENSE)
 [![HACS Custom](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
-![](https://komarev.com/ghpvc/?username=hzonz&color=ff69b4)
 
 ## iKuai Connect 是专为 Home Assistant 打造的爱快（iKuai）路由器深度集成插件。不同于传统的网页模拟登录，本项目完全基于 **iKuai OpenAPI 3.1 (v4.0接口)** 构建，提供极速、稳定且安全的网络监控与自动化体验。
 
@@ -31,7 +30,10 @@
 
 1. 在HACS的"集成"部分，点击右上角的三点菜单
 2. 选择"自定义存储库"
-3. 在存储库字段输入：`https://github.com/hzonz/ha_ikuai_connect`
+3. 在存储库字段输入：
+   ```yaml
+   https://github.com/PraxiGEN/ha_ikuai_connect
+   ```
 4. 类别选择"集成"
 5. 点击"添加"保存
 6. 在HACS中找到"ikuai_connect"集成并点击安装
@@ -39,8 +41,11 @@
 
 ### 手动安装
 
-1. 下载最新的: `https://github.com/hzonz/ha_ikuai_connect`
-2. 解压并将`custom_components/ikuai_connect`文件夹放入Home Assistant的`custom_components`目录
+1. 下载最新的:
+   ```yaml
+   https://github.com/PraxiGEN/ha_ikuai_connect
+   ```
+2. 解压并将`ikuai_connect`文件夹放入Home Assistant的`custom_components`目录
 3. 重启Home Assistant
 
 ## 📖 文档导航
@@ -72,5 +77,15 @@
 ---
 **兼容版本**:
 
-Home Assistant 2024.5+.
-ikuai 4.0.222+.
+- **Home Assistant 2026.1+**    
+  
+  本集成最低兼容 HA 2026.1 及以上版本。
+
+- **为确保集成品牌图片正确显示，请选择 Home Assistant 2026.3+**   
+  
+  为确保品牌图标能够正确显示，建议使用 HA 2026.3 或更高版本。
+  从 2026.3 起，Home Assistant 引入了 custom_integrations 目录与 Brands Proxy API，自定义集成可以在自身目录中直接包含品牌图片。
+
+- **ikuai 4.0.222+**
+
+  最低兼容 ikuai 4.0.222 及以上版本。
