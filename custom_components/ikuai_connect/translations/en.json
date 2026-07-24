@@ -77,12 +77,6 @@
       }
     }
   },
-  "notification": {
-    "reboot_main_msg": "Reboot command sent. The router will reboot within 1 minute.",
-    "check_upgrade_msg": "Checking for new firmware version. Please check system logs shortly.",
-    "start_upgrade_msg": "Firmware upgrade initiated. Do not power off or reboot the device.",
-    "backup_msg": "System backup started. Please check the backend for the backup file later."
-  },
   "entity": {
     "sensor": {
       "cpu_load": { "name": "CPU Load" },
@@ -269,7 +263,7 @@
           "schedule": {
             "name": "Effective Time",
             "state": {
-              "every_week": "Every Week {weekdays}",
+              "every_week": "Every Week",
               "specific_date": "Specific Date",
               "all_day": "All Day"
             }
@@ -297,6 +291,22 @@
     }
   },
   "services": {
+    "reboot": {
+      "name": "Reboot Router",
+      "description": "The reboot command has been issued. iKuai will perform the reboot within 1 minute."
+    },
+    "check_upgrade": {
+      "name": "Check for Updates",
+      "description": "Checking for new versions from the cloud. Please check the system logs shortly."
+    },
+    "start_upgrade": {
+      "name": "Firmware Upgrade",
+      "description": "The system upgrade command has been triggered. Do not power off or reboot the device."
+    },
+    "backup": {
+      "name": "System Backup",
+      "description": "The system backup task has started. Please check the backup files in the background later."
+    },
     "get_traffic_ranking": {
       "name": "Get Today's Traffic Ranking",
       "description": "Retrieve today's total traffic usage for all terminals, measured in MB."

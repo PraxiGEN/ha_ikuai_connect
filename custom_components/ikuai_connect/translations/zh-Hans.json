@@ -77,12 +77,6 @@
       }
     }
   },
-  "notification": {
-    "reboot_main_msg": "重启指令已下发，爱快将在 1 分钟内执行重启。",
-    "check_upgrade_msg": "正在向云端检测新版本，请稍候查看系统日志。",
-    "start_upgrade_msg": "系统升级指令已触发，请勿断电或重启设备。",
-    "backup_msg": "系统备份任务已开始，请稍候在后台查看备份文件。"
-  },
   "entity": {
     "sensor": {
       "cpu_load": { "name": "CPU 使用率" },
@@ -269,7 +263,7 @@
           "schedule": { 
             "name": "生效时间",
             "state": {
-              "every_week": "每周{weekdays}",
+              "every_week": "每周",
               "specific_date": "特定日期",
               "all_day": "全天"
             }
@@ -297,6 +291,22 @@
     }
   },
   "services": {
+    "reboot": {
+      "name": "重启路由器",
+      "description": "重启指令已下发，爱快将在 1 分钟内执行重启。"
+    },
+    "check_upgrade": {
+      "name": "检测更新",
+      "description": "正在向云端检测新版本，请稍候查看系统日志。"
+    },
+    "start_upgrade": {
+      "name": "固件升级",
+      "description": "系统升级指令已触发，请勿断电或重启设备。"
+    },
+    "backup": {
+      "name": "系统备份",
+      "description": "系统备份任务已开始，请稍候在后台查看备份文件。"
+    },
     "get_traffic_ranking": {
       "name": "获取当日流量排行",
       "description": "查询所有终端今天的流量使用情况汇总，单位为 MB。"
