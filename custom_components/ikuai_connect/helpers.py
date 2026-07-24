@@ -1,4 +1,4 @@
-"""Helpers for iKuai Connect."""
+"""iKuai Connect."""
 from __future__ import annotations
 
 import re

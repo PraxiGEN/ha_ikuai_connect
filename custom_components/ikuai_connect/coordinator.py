@@ -1,9 +1,7 @@
-"""Data Coordinator for iKuai Connect."""
+"""iKuai Connect 数据协调器."""
 from __future__ import annotations
 
-import asyncio
 from datetime import timedelta
-import logging
 import time
 from typing import Any
 
@@ -12,23 +10,23 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from .helpers import extract_name_from_label
 from .const import (
     DOMAIN,
+    LOGGER,
     CONF_TRACKER_CONFIG,
     CONF_OFFLINE_GRACE_PERIOD,
     DEFAULT_OFFLINE_GRACE_PERIOD,
 )
-
-_LOGGER = logging.getLogger(__name__)
 
 class IkuaiCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     """处理 OpenAPI 数据清洗."""
 
     def __init__(self, hass, api, host, interval):
         super().__init__(
-            hass, _LOGGER, name=f"{DOMAIN}_{host}",
+            hass, LOGGER, name=f"{DOMAIN}_{host}",
             update_interval=timedelta(seconds=interval),
         )
         self.api = api
         self.host = host
+        self.gwid = None  # 主网关 ID
         self.last_msg_id = None
         self.last_presence_id = None
         self.last_ddns_id = None
@@ -36,19 +34,15 @@ class IkuaiCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._hostname = "iKuai"
         self._last_seen: dict[str, float] = {}
 
-
     async def _async_update_data(self) -> dict[str, Any]:
         """抓取并清洗数据."""
         try:
-            
             # 异步并发抓取所有端点的数据
             results = await self.api.get_all_data()
-            
             # 任务预检逻辑
             for i in [0, 1, 2]:
                 if isinstance(results[i], Exception):
                     raise results[i]
-
             # --- 正确解包变量 (顺序必须与 api.py 完全一致) ---
             (
                 sys_res,            # 0 系统信息（get_system_info）
@@ -71,7 +65,6 @@ class IkuaiCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 disks_res           # 15 磁盘信息（get_disks）
             ) = results
 
-
             # ---基础元数据提取 --- 包括主机名、系统版本、硬件版本等 (供设备信息使用)
             sysinfo = sys_res.get("sysinfo", {}) if isinstance(sys_res, dict) else {}
             verinfo = sysinfo.get("verinfo", {})
@@ -83,6 +76,10 @@ class IkuaiCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             mem = sysinfo.get("memory", {})
             users = sysinfo.get("online_user", {})
             stream = sysinfo.get("stream", {})
+
+            #获取爱快硬件唯一的 gwid
+            if not self.gwid:
+                self.gwid = sysinfo.get("gwid") or self.config_entry.entry_id
 
             # ---WAN IPv4 提取 (物理网口 wan1) ---
             iface_check_list = iface_status_res.get("iface_check", []) if isinstance(iface_status_res, dict) else []
@@ -191,14 +188,13 @@ class IkuaiCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         # 沿用缓存数据，如果没有则创建一个带基本名称的字典
                         final_clients_map[mac_lower] = previous_clients.get(
                             mac_lower, 
-                            {"mac": mac_lower, "ip_addr": "Unknown", "offline_buffering": True}
+                            {"mac": mac_lower, "ip_addr": "unknown", "offline_buffering": True}
                         )
                     else:
                         # 【真正离线】：不加入 final_clients_map
-                        _LOGGER.debug("设备 %s 离线超时，设置为离开", mac_lower)
+                        LOGGER.debug("设备 %s 离线超时，设置为离开", mac_lower)
 
             # ---接口监控管理子设备---
-
             # ---处理接口监控 (Interfaces) ---
             processed_ifaces = {}
             iface_stream_list = iface_status_res.get("iface_stream", []) if isinstance(iface_status_res, dict) else []
@@ -218,13 +214,12 @@ class IkuaiCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 }
 
             # ---系统维护管理子设备---
-
             # ---日志---
             def get_new_events(res_data, last_id_attr):
                 if not isinstance(res_data, dict): 
                     return [], getattr(self, last_id_attr)
                 
-                # --- 关键修正：兼容嵌套结构 ---
+                # ---兼容嵌套结构 ---
                 data_list = res_data.get("data")
                 if data_list is None:
                     data_list = res_data.get("results", {}).get("data", [])
@@ -265,7 +260,6 @@ class IkuaiCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 self.last_msg_id = curr_max_m
 
             # ---安全管理子设备---
-
             # ---处理安全管理 (Security) ---
             processed_security = {
                 "mac_mode_code": mac_mode_res.get("acl_mac", 0) if isinstance(mac_mode_res, dict) else 0,
@@ -301,7 +295,6 @@ class IkuaiCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 display_up = "已是最新版本"
 
             processed_maint = {
-
                 "upgrade_display_state": display_up,
                 "upgrade_detail": {
                     "current_version": curr_ver,
@@ -314,10 +307,8 @@ class IkuaiCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             }
 
             # ---存储磁盘子设备---
-
             # ---处理磁盘存储 (Storage) ---
             PURPOSE_MAP = {"0": "普通储存", "1": "有余繁星", "2": "视频缓存", "3": "行为记录", "4": "钉钉闪传"}
-
             processed_disks = {}
             disk_raw = disks_res.get("data", []) if isinstance(disks_res, dict) else []
 
@@ -347,7 +338,6 @@ class IkuaiCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     # purpose 映射，统一转字符串
                     purpose_key = str(m.get("mt_purpose"))
                     purpose = PURPOSE_MAP.get(purpose_key, "未知")
-
                     partitions.append({
                         "name": p.get("name"),
                         "usage": usage,
@@ -357,7 +347,6 @@ class IkuaiCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
                 # 计算磁盘使用率
                 usage_pct = round(used_bytes / total_bytes * 100, 1) if total_bytes > 0 else 0
-
                 processed_disks[disk_id] = {
                     "base_info": {
                         "model": d.get("model"),
@@ -374,8 +363,7 @@ class IkuaiCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     "partitions": partitions
                 }
 
-
-            # --- 【最终唯一返回点】：整合所有模块 ---
+            # --- 整合所有模块 ---
             return {
                 "system": processed_sys,
                 "clients": final_clients_map,
@@ -392,7 +380,7 @@ class IkuaiCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 }
             }
         except Exception as err:
-            _LOGGER.exception("iKuai Coordinator 数据清洗关键错误")
+            LOGGER.exception("iKuai Coordinator 数据清洗关键错误")
             raise UpdateFailed(f"API 错误: {err}") from err
       
     # 主设备        
@@ -401,7 +389,7 @@ class IkuaiCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         device_name = self.config_entry.title
         return DeviceInfo(
             identifiers={(DOMAIN, self.host)},
-            name=f"{self._hostname} {device_name}",
+            name=f"{device_name}",
             manufacturer="iKuai",
             model="iKuai Router",
             sw_version=self._sw_version,

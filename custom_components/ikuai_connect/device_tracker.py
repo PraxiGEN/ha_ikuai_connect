@@ -1,7 +1,6 @@
-"""iKuai 追踪器."""
+"""iKuai Connect 设备追踪平台."""
 from __future__ import annotations
 
-import logging
 from homeassistant.components.device_tracker import TrackerEntity, SourceType
 from homeassistant.const import STATE_HOME, STATE_NOT_HOME
 from homeassistant.config_entries import ConfigEntry
@@ -10,10 +9,8 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, CONF_TRACKER_CONFIG
+from .const import DOMAIN, LOGGER, CONF_TRACKER_CONFIG
 from .coordinator import IkuaiCoordinator
-
-_LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -22,35 +19,44 @@ async def async_setup_entry(
 ) -> None:
     """Set up iKuai trackers."""
     coordinator: IkuaiCoordinator = entry.runtime_data
-    
-    # 获取配置 (Options 存储)
-    tracker_config = entry.options.get(CONF_TRACKER_CONFIG, {})
-    host_id = coordinator.host.split("//")[-1].replace(".", "_").replace(":", "_")
-    
-    # 获取注册表用于最后的“删除”操作
-    ent_reg = er.async_get(hass)
-    existing_entries = er.async_entries_for_config_entry(ent_reg, entry.entry_id)
+    # 记录当前已经在内存中运行的实体的 Unique ID
+    added_unique_ids: set[str] = set()
 
-    entities_to_add = []
-    current_uids = set()
+    @callback
+    def _async_manage_entities() -> None:
+        """动态管理追踪实体：增量添加与物理删除."""
+        tracker_config = entry.options.get(CONF_TRACKER_CONFIG) or entry.data.get(CONF_TRACKER_CONFIG, {})
+        ent_reg = er.async_get(hass)
+        new_entities = []
+        current_configured_uids = set()
+        # 增量添加逻辑
+        for mac, conf in tracker_config.items():
+            # 统一使用小写无冒号 MAC + gwid
+            mac_clean = mac.lower().replace(":", "").replace("-", "")
+            uid = f"{coordinator.gwid}_track_{mac_clean}"
+            current_configured_uids.add(uid)
 
-    # 【架构重构】：不管 Registry 是否存在，都为配置中的所有 MAC 创建对象
-    for mac, conf in tracker_config.items():
-        mac_lower = mac.lower()
-        uid = f"ik_t_{mac_lower.replace(':', '')}_{host_id}"
-        current_uids.add(uid)
-        
-        # 只要配置里有，我们就创建对象
-        entities_to_add.append(IkuaiTracker(coordinator, mac_lower, conf, uid))
+            if uid not in added_unique_ids:
+                new_entities.append(IkuaiTracker(coordinator, mac.lower(), conf, uid))
+                added_unique_ids.add(uid)
 
-    for entity in existing_entries:
-        if entity.domain == "device_tracker" and entity.unique_id not in current_uids:
-            _LOGGER.info("注销已移除的追踪实体: %s", entity.entity_id)
-            ent_reg.async_remove(entity.entity_id)
+        if new_entities:
+            async_add_entities(new_entities, True)
 
-    if entities_to_add:
-        async_add_entities(entities_to_add, True)
+        # 自动清理逻辑 (从 HA 注册表中彻底删除已取消勾选的设备)
+        entity_entries = er.async_entries_for_config_entry(ent_reg, entry.entry_id)
+        for entity in entity_entries:
+            if entity.domain == "device_tracker" and "_track_" in entity.unique_id:
+                if entity.unique_id not in current_configured_uids:
+                    LOGGER.info("正在彻底注销移除的追踪实体: %s", entity.entity_id)
+                    ent_reg.async_remove(entity.entity_id)
+                    if entity.unique_id in added_unique_ids:
+                        added_unique_ids.remove(entity.unique_id)
 
+    # 初次加载执行
+    _async_manage_entities()
+    # 绑定监听：每当协调器数据更新时，触发动态管理
+    entry.async_on_unload(coordinator.async_add_listener(_async_manage_entities))
 
 class IkuaiTracker(CoordinatorEntity[IkuaiCoordinator], TrackerEntity):
     """iKuai 终端追踪实体."""
@@ -68,25 +74,25 @@ class IkuaiTracker(CoordinatorEntity[IkuaiCoordinator], TrackerEntity):
 
     @property
     def is_connected(self) -> bool:
-        """判断是否在线."""
-        if not self.coordinator.data or "clients" not in self.coordinator.data:
+        """判断在线状态."""
+        if not self.coordinator.data:
             return False
         return self._mac in self.coordinator.data.get("clients", {})
 
     @property
     def state(self) -> str:
-        """返回状态 (STATE_HOME/STATE_NOT_HOME)."""
+        """返回 HA 标准状态."""
         return STATE_HOME if self.is_connected else STATE_NOT_HOME
 
     @property
     def source_type(self) -> SourceType:
-        """定义为路由器追踪."""
+        """指定追踪来源."""
         return SourceType.ROUTER
 
     @property
     def extra_state_attributes(self) -> dict:
-        """附加详细信息."""
-        if not self.coordinator.data or "clients" not in self.coordinator.data:
+        """返回精简后的物理属性."""
+        if not self.coordinator.data:
             return {}
         
         client = self.coordinator.data.get("clients", {}).get(self._mac, {})

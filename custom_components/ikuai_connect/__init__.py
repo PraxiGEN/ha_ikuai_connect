@@ -1,20 +1,16 @@
 """ikuai connect 集成入口."""
 from __future__ import annotations
 
-from datetime import timedelta
-import logging
 import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_HOST, CONF_TOKEN, CONF_SCAN_INTERVAL, Platform
+from homeassistant.const import CONF_HOST, CONF_TOKEN, CONF_SCAN_INTERVAL
 from homeassistant.core import HomeAssistant, ServiceResponse, SupportsResponse
 from homeassistant.helpers import config_validation as cv
 import homeassistant.util.dt as dt_util
 
 from .api import IkuaiAPI
-from .const import DOMAIN, PLATFORMS, DEFAULT_SCAN_INTERVAL
+from .const import DOMAIN, LOGGER, PLATFORMS, DEFAULT_SCAN_INTERVAL
 from .coordinator import IkuaiCoordinator
-
-_LOGGER = logging.getLogger(__name__)
 
 type IkuaiConfigEntry = ConfigEntry[IkuaiCoordinator]
 
@@ -22,7 +18,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: IkuaiConfigEntry) -> boo
     """设置集成入口."""
     # 实例 API
     api = IkuaiAPI(hass, entry.data[CONF_HOST], entry.data[CONF_TOKEN])
-    
     # 实例协调器
     coordinator = IkuaiCoordinator(
         hass, 
@@ -34,8 +29,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: IkuaiConfigEntry) -> boo
 
     # 强制执行第一次成功刷新，确保平台加载时有数据
     await coordinator.async_config_entry_first_refresh()
-
-    # 存入 runtime_data，供平台访问和服务调用使用
     entry.runtime_data = coordinator
 
     # ---获取流量排行 (优化单位为 MB) ---

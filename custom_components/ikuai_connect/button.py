@@ -1,20 +1,57 @@
-"""iKuai Button."""
+"""iKuai Connect 按钮传感器平台."""
 from __future__ import annotations
 
 import asyncio
-import logging
+from dataclasses import dataclass
 from typing import Final
 
-from homeassistant.components.button import ButtonEntity
+from homeassistant.components.button import ButtonDeviceClass, ButtonEntity, ButtonEntityDescription
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import translation
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, BUTTON_TYPES, IkuaiButtonEntityDescription
+from .const import DOMAIN, LOGGER
 from .coordinator import IkuaiCoordinator
 
-_LOGGER = logging.getLogger(__name__)
+@dataclass(frozen=True, kw_only=True)
+class IkuaiButtonEntityDescription(ButtonEntityDescription):
+    """描述按钮动作."""
+    action_type: str 
+
+# 按钮实体定义
+BUTTON_TYPES: Final[tuple[IkuaiButtonEntityDescription, ...]] = (
+    IkuaiButtonEntityDescription(
+        key="reboot",
+        name="Reboot Router",
+        translation_key="reboot",
+        icon="mdi:restart",
+        device_class=ButtonDeviceClass.RESTART,
+        action_type="reboot_main",
+    ),
+    IkuaiButtonEntityDescription(
+        key="check_upgrade",
+        name="Check Firmware Update",
+        translation_key="check_update",
+        icon="mdi:update",
+        action_type="check_upgrade",
+    ),
+    IkuaiButtonEntityDescription(
+        key="start_upgrade",
+        name="Start Firmware Upgrade",
+        translation_key="start_upgrade",
+        icon="mdi:cloud-download",
+        action_type="start_upgrade",
+    ),
+    IkuaiButtonEntityDescription(
+        key="create_backup",
+        name="Backup System Configuration",
+        translation_key="create_backup",
+        icon="mdi:database-export",
+        action_type="backup",
+    ),
+)
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -24,15 +61,14 @@ async def async_setup_entry(
     """Set up iKuai Connect buttons from a config entry."""
     coordinator: IkuaiCoordinator = entry.runtime_data
 
-    # 批量注册所有在 const.py 中定义的按钮
+    # 使用描述符批量注册
     async_add_entities(
         IkuaiButton(coordinator, description)
         for description in BUTTON_TYPES
     )
 
-
 class IkuaiButton(CoordinatorEntity[IkuaiCoordinator], ButtonEntity):
-    """iKuai 统一按钮类 (支持主设备与子设备)."""
+    """iKuai 统一按钮实现 (支持主设备与维护子设备)."""
 
     entity_description: IkuaiButtonEntityDescription
     _attr_has_entity_name = True
@@ -45,87 +81,58 @@ class IkuaiButton(CoordinatorEntity[IkuaiCoordinator], ButtonEntity):
         """Initialize."""
         super().__init__(coordinator)
         self.entity_description = description
-        
-        # 构造唯一 ID
-        host_id = coordinator.host.split("//")[-1].replace(".", "_").replace(":", "_")
-        self._attr_unique_id = f"{DOMAIN}_btn_{description.key}_{host_id}"
-        self._attr_translation_key = description.translation_key
-        
-        # 【核心逻辑】：根据按钮类型决定挂载到哪个设备
+        self._attr_unique_id = f"{coordinator.gwid}_ctrl_{description.key}"
         if description.action_type == "reboot_main":
-            # 重启按钮挂载在主设备 (Router)
             self._attr_device_info = coordinator.device_info
         else:
-            # 升级与备份按钮挂载在子设备 (Maintenance)
             self._attr_device_info = coordinator.maintenance_device_info
 
     async def async_press(self) -> None:
-        """根据 action_type 执行对应 API 动作."""
+        """根据 action_type 执行 API 动作并发送通知."""
         action = self.entity_description.action_type
         api = self.coordinator.api
 
+        LOGGER.debug("执行 iKuai 动作: %s", action)
+
         try:
+            # 1. 调用 API 执行动作
             if action == "reboot_main":
                 await api.trigger_immediate_reboot()
-
-                await self.hass.services.async_call(
-                    "persistent_notification",
-                    "create",
-                    {
-                        "title": "iKuai Connect",
-                        "message": "重启指令已下发，爱快将在 1 分钟内执行重启。",
-                        "notification_id": "ikuai_reboot_alert"
-                    },
-                    blocking=False
-                )
-
             elif action == "check_upgrade":
-                result = await api.check_upgrade()
-
-                await self.hass.services.async_call(
-                    "persistent_notification",
-                    "create",
-                    {
-                        "title": "iKuai Connect",
-                        "message": "正在向云端检测新版本，请稍候查看系统日志。",
-                        "notification_id": "ikuai_upgrade_check"
-                    },
-                    blocking=False
-                )
-
+                await api.check_upgrade()
             elif action == "start_upgrade":
                 await api.start_upgrade()
-
-                await self.hass.services.async_call(
-                    "persistent_notification",
-                    "create",
-                    {
-                        "title": "iKuai Connect",
-                        "message": "系统升级指令已触发，请勿断电或重启设备。",
-                        "notification_id": "ikuai_upgrade_start"
-                    },
-                    blocking=False
-                )
-
             elif action == "backup":
                 await api.trigger_backup()
 
-                await self.hass.services.async_call(
-                    "persistent_notification",
-                    "create",
-                    {
-                        "title": "iKuai Connect",
-                        "message": "系统备份任务已开始，请稍候在后台查看备份文件。",
-                        "notification_id": "ikuai_backup_start"
-                    },
-                    blocking=False
-                )
-
-            # 动作完成后处理
-            # 对于升级和备份，给 API 2 秒反应时间再刷新数据
+            # 发送翻译后的系统通知
+            await self._send_notification(action)
+            # 针对异步耗时操作，延迟刷新数据
             if action in ["start_upgrade", "backup", "check_upgrade"]:
                 await asyncio.sleep(2)
                 await self.coordinator.async_request_refresh()
 
         except Exception as err:
-            _LOGGER.error("iKuai 按钮动作 [%s] 执行失败: %s", action, err)
+            LOGGER.error("iKuai 按钮动作 [%s] 执行失败: %s", action, err)
+
+    async def _send_notification(self, action: str) -> None:
+        """从翻译文件动态抓取消息并发送."""
+        lang = self.hass.config.language
+        # 抓取当前集成的所有通知类翻译
+        translations = await translation.async_get_translations(
+            self.hass, lang, "notification", [DOMAIN]
+        )
+        
+        msg_key = f"component.{DOMAIN}.notification.{action}_msg"
+        message = translations.get(msg_key, f"Action {action} completed.")
+
+        await self.hass.services.async_call(
+            "persistent_notification",
+            "create",
+            {
+                "title": "iKuai Connect",
+                "message": message,
+                "notification_id": f"ikuai_{action}",
+            },
+            blocking=False
+        )

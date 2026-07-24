@@ -1,22 +1,51 @@
-"""Support for iKuai Connect event entities."""
+"""iKuai Connect 事件传感器平台."""
 from __future__ import annotations
 
-import logging
 import time
+from dataclasses import dataclass
 from collections.abc import Iterable
-from typing import Any
+from typing import Any, Final
 
+from homeassistant.components.event import EventEntityDescription
 from homeassistant.components.event import EventEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import EVENT_TYPES, IkuaiEventEntityDescription
+from .const import DOMAIN, LOGGER
 from .coordinator import IkuaiCoordinator
 
-_LOGGER = logging.getLogger(__name__)
+@dataclass(frozen=True, kw_only=True)
+class IkuaiEventEntityDescription(EventEntityDescription):
+    """描述 iKuai 事件实体."""
 
+EVENT_TYPES: Final[tuple[IkuaiEventEntityDescription, ...]] = (
+    IkuaiEventEntityDescription(
+        key="message_center",
+        name="System Message Notification",
+        translation_key="message_center",
+        icon="mdi:bell-ring",
+    ),
+    IkuaiEventEntityDescription(
+        key="terminal_presence_log",
+        name="Terminal Online and Offline Logs",
+        translation_key="terminal_presence_log",
+        icon="mdi:account-clock",
+    ),
+    IkuaiEventEntityDescription(
+        key="dynamic_ddns_log",
+        name="Dynamic DDNS Change Log",
+        translation_key="dynamic_ddns_log",
+        icon="mdi:dns",
+    ),
+    IkuaiEventEntityDescription(
+        key="wireless_terminal_log",
+        name="Wireless Terminal Change Log",
+        translation_key="wireless_terminal_log",
+        icon="mdi:wifi-marker",
+    ),
+)
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -26,7 +55,6 @@ async def async_setup_entry(
     """Set up iKuai event entities."""
     coordinator: IkuaiCoordinator = entry.runtime_data
     async_add_entities(IkuaiEvent(coordinator, desc) for desc in EVENT_TYPES)
-
 
 class IkuaiEvent(EventEntity, CoordinatorEntity[IkuaiCoordinator]):
     """iKuai 固定事件模型实现."""
@@ -39,7 +67,7 @@ class IkuaiEvent(EventEntity, CoordinatorEntity[IkuaiCoordinator]):
         """Initialize."""
         super().__init__(coordinator)
         self.entity_description = description
-        self._attr_unique_id = f"{coordinator.host}_{description.key}"
+        self._attr_unique_id = f"{coordinator.gwid}_event_{description.key}"
         self._attr_device_info = coordinator.maintenance_device_info
 
         # 固定事件类型池
@@ -82,8 +110,6 @@ class IkuaiEvent(EventEntity, CoordinatorEntity[IkuaiCoordinator]):
 
         if fired:
             self.async_write_ha_state()
-
-    # --- 具体的处理器逻辑 ---
 
     def _handle_messages(self, items: Iterable[dict[str, Any]]) -> bool:
         has_fired = False
@@ -170,8 +196,6 @@ class IkuaiEvent(EventEntity, CoordinatorEntity[IkuaiCoordinator]):
             })
             has_fired = True
         return has_fired
-
-    # --- 辅助方法 ---
 
     def _fire_smart_event(self, event_type: str, data: dict) -> None:
         """动态注册并触发事件，确保 UI 显示名称."""
