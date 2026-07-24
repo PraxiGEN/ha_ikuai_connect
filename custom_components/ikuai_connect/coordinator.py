@@ -402,7 +402,7 @@ class IkuaiCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     def iface_mgmt_device_info(self) -> DeviceInfo:
         return DeviceInfo(
             identifiers={(DOMAIN, f"{self.host}_iface_mgmt")},
-            name=f"{self.config_entry.title} 接口监控管理",
+            name=f"{self.config_entry.title} 接口监控",
             manufacturer="iKuai",
             model="Interface Monitor",
             via_device=(DOMAIN, self.host),
@@ -413,7 +413,7 @@ class IkuaiCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     def security_device_info(self) -> DeviceInfo:
         return DeviceInfo(
             identifiers={(DOMAIN, f"{self.host}_security")},
-            name=f"{self.config_entry.title} 安全中心管理",
+            name=f"{self.config_entry.title} 安全中心",
             manufacturer="iKuai",
             model="Security & Firewall",
             via_device=(DOMAIN, self.host),
@@ -424,7 +424,7 @@ class IkuaiCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     def maintenance_device_info(self) -> DeviceInfo:
         return DeviceInfo(
             identifiers={(DOMAIN, f"{self.host}_maintenance")},
-            name=f"{self.config_entry.title} 系统维护管理",
+            name=f"{self.config_entry.title} 系统维护",
             manufacturer="iKuai",
             model="System Maintenance",
             via_device=(DOMAIN, self.host),
