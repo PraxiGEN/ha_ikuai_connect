@@ -135,9 +135,12 @@ class IkuaiMacRuleSwitch(CoordinatorEntity[IkuaiCoordinator], SwitchEntity):
         formatted_times = []
         for t in time_rules:
             if t.get("type") == "weekly":
-                formatted_times.append(self._labels["every_week"].format(weekdays=t.get('weekdays')))
+                # 在 Python 中手动拼接： "每周" + "12345"
+                prefix = self._labels.get("every_week", "Weekly")
+                formatted_times.append(f"{prefix}{t.get('weekdays')}")
             else:
-                formatted_times.append(f"{self._labels['specific_date']} {t.get('start_time')}-{t.get('end_time')}")
+                prefix = self._labels.get("specific_date", "Date")
+                formatted_times.append(f"{prefix} {t.get('start_time')}-{t.get('end_time')}")
 
         # 处理过期时间
         expires_val = rule.get("expires", 0)

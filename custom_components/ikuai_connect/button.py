@@ -120,10 +120,10 @@ class IkuaiButton(CoordinatorEntity[IkuaiCoordinator], ButtonEntity):
         lang = self.hass.config.language
         # 抓取当前集成的所有通知类翻译
         translations = await translation.async_get_translations(
-            self.hass, lang, "notification", [DOMAIN]
+            self.hass, lang, "services", [DOMAIN]
         )
         
-        msg_key = f"component.{DOMAIN}.notification.{action}_msg"
+        msg_key = f"component.{DOMAIN}.services.{action}.description"
         message = translations.get(msg_key, f"Action {action} completed.")
 
         await self.hass.services.async_call(
