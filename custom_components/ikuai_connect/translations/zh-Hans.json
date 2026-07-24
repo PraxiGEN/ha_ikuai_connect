@@ -1,12 +1,11 @@
 {
   "config": {
-    "default_name": "主路由",
     "step": {
       "user": {
         "title": "连接到 iKuai 路由器",
-        "description": "请输入 iKuai OpenAPI 地址和个人 API 令牌（Token）。必须使用 **HTTPS** 。\n 允许用户为每个 iKuai 连接设置一个自定义名称， \n 方便区分不同路由器的连接（如：主路由、二楼路由）。 \n 注：仅支持 **ikuai 4.0.221** 及以上版本。",
+        "description": "请输入 iKuai OpenAPI 地址和个人 API 令牌 (Token)。必须使用 **HTTPS**。\n 允许用户为每个 iKuai 连接设置一个自定义名称，方便区分不同路由器 (如：主路由、二楼路由)。\n 注：仅支持 **iKuai 4.0.222** 及以上版本。",
         "data": {
-          "name": "连接名称 (如：主路由)",
+          "name": "连接名称 (例如：主路由)",
           "host": "主机地址 (例如 https://10.10.10.1)",
           "token": "个人 API 令牌 (Token)"
         }
@@ -23,7 +22,7 @@
     "error": {
       "cannot_connect": "无法连接到 iKuai，请检查地址、令牌以及是否开启了 HTTPS 服务。",
       "invalid_auth": "令牌无效，请确保该令牌在爱快后台拥有足够的接口权限。",
-      "name_exists": "该集成名称已在使用中，请换一个名字（如：二楼路由）。",
+      "name_exists": "该集成名称已在使用中，请换一个名字。",
       "unknown": "发生未知错误。"
     },
     "abort": {
@@ -50,7 +49,7 @@
       },
       "configure_devices": {
         "title": "配置终端追踪选项",
-        "description": "正在配置 **{device}** , \n 请为选中的终端设置显示名称和离线缓冲时间, \n 剩余待配置设备: {remaining} 个, \n 注：手机判定时间建议设置600秒。",
+        "description": "正在配置 **{device}**，请为选中的终端设置显示名称和离线缓冲时间。\n 剩余待配置设备: {remaining} 个。\n 注：手机判定时间建议设置 600 秒。",
         "data": {
           "name": "显示名称",
           "offline_grace_period": "离线判定延迟时间 (30-3600秒)"
@@ -58,8 +57,9 @@
       },
       "remove": {
         "title": "移除追踪终端",
+        "description": "勾选您不再需要追踪的设备，对应的实体将被移除。",
         "data": {
-          "devices_to_remove": "已追踪设备列表"
+          "devices_to_remove": "已追踪终端列表"
         }
       }
     },
@@ -72,15 +72,21 @@
     "manage_action": {
       "options": {
         "none": "无 (仅保存基础设置并退出)",
-        "add": "➕ 添加新的追踪终端",
-        "remove": "➖ 移除现有的追踪"
+        "add": "添加新的追踪终端",
+        "remove": "移除现有的追踪终端"
       }
     }
-  },   
+  },
+  "notification": {
+    "reboot_main_msg": "重启指令已下发，爱快将在 1 分钟内执行重启。",
+    "check_upgrade_msg": "正在向云端检测新版本，请稍候查看系统日志。",
+    "start_upgrade_msg": "系统升级指令已触发，请勿断电或重启设备。",
+    "backup_msg": "系统备份任务已开始，请稍候在后台查看备份文件。"
+  },
   "entity": {
     "sensor": {
       "cpu_load": { "name": "CPU 使用率" },
-      "memory_usage": { 
+      "memory_usage": {
         "name": "内存使用率",
         "state_attributes": {
           "total": { "name": "内存总量" },
@@ -89,22 +95,42 @@
           "cached": { "name": "缓存内存" },
           "buffers": { "name": "缓冲内存" }
         }
-      },  
-      "online_users": { 
+      },
+      "online_users": {
         "name": "在线设备总数",
         "state_attributes": {
-          "count_2g": { "name": "2.4G 在线设备数量" },
-          "count_5g": { "name": "5G 在线设备数量" },
-          "count_wired": { "name": "有线在线设备数量" },
-          "count_wireless": { "name": "无线在线设备数量" }
+          "count_2g": { "name": "2.4G 设备数" },
+          "count_5g": { "name": "5G 设备数" },
+          "count_wired": { "name": "有线设备数" },
+          "count_wireless": { "name": "无线设备数" }
         }
       },
       "connection_count": { "name": "当前连接总数" },
-      "sys_upload_speed": { "name": "总上传速度", "state_attributes": { "ipv6_upload_speed": { "name": "IPV6上传速度" } } },
-      "sys_download_speed": { "name": "总下载速度", "state_attributes": { "ipv6_download_speed": { "name": "IPV6下载速度" } } },
-      "sys_total_up": { "name": "总上传流量", "state_attributes": { "ipv6_total_upload": { "name": "IPV6总流量" } } },
-      "sys_total_down": { "name": "总下载流量", "state_attributes": { "ipv6_total_download": { "name": "IPV6总流量" } } },
-      "uptime": { 
+      "sys_upload_speed": { 
+        "name": "总上传速度", 
+        "state_attributes": { 
+          "ipv6_upload_speed": { "name": "IPv6 上传速度" } 
+        } 
+      },
+      "sys_download_speed": { 
+        "name": "总下载速度", 
+        "state_attributes": { 
+          "ipv6_download_speed": { "name": "IPv6 下载速度" } 
+        } 
+      },
+      "sys_total_up": { 
+        "name": "总上传流量", 
+        "state_attributes": { 
+          "ipv6_total_upload": { "name": "IPv6 总上传流量" } 
+        } 
+      },
+      "sys_total_down": { 
+        "name": "总下载流量", 
+        "state_attributes": { 
+          "ipv6_total_download": { "name": "IPv6 总下载流量" } 
+        } 
+      },
+      "uptime": {
         "name": "运行时间",
         "state_attributes": {
           "wan_ipv4": { "name": "WAN IPv4 地址" },
@@ -218,7 +244,7 @@
           "signal": { "name": "信号强度" },
           "ap_mac": { "name": "连接的 AP MAC 地址" },
           "ap_name": { "name": "接入点" },
-          "action":{ "name": "事件", "state":{ "login": "登录", "logout": "退出"}},
+          "action":{ "name": "事件", "state":{ "login": "登录", "logout": "退出" }},
           "reason": { "name": "状态" },
           "time": { "name": "记录时间" }
         }
@@ -257,7 +283,7 @@
           "rule_id": { "name": "规则 ID" }
         }
       }
-    },    
+    },  
     "device_tracker": {
       "ikuai_tracker": { 
         "name": "终端追踪",
@@ -267,7 +293,59 @@
           "ap_mac": { "name": "连接的 AP MAC 地址" },
           "uplink_addr": { "name": "上行地址" }
         }
-      }  
+      }
+    }
+  },
+  "services": {
+    "get_traffic_ranking": {
+      "name": "获取当日流量排行",
+      "description": "查询所有终端今天的流量使用情况汇总，单位为 MB。"
+    },
+    "get_protocol_stats": {
+      "name": "获取设备协议分布",
+      "description": "查询指定终端最近 24 小时的协议分类流量统计（例如判断设备是在看视频还是下文件）。",
+      "fields": {
+        "mac": {
+          "name": "MAC 地址",
+          "description": "终端的 MAC 地址。"
+        },
+        "ip": {
+          "name": "IP 地址",
+          "description": "终端的 IP 地址（可选，不填则尝试从缓存自动匹配）。"
+        }
+      }
+    },
+    "get_offline_history": {
+      "name": "获取离线终端历史",
+      "description": "查询最近 20 条终端下线记录，单位为 MB。"
+    },
+    "add_mac_rule": {
+      "name": "添加 MAC 访问控制规则",
+      "description": "在爱快中创建一条新的 MAC 黑/白名单规则。创建后集成会自动生成对应的开关实体。",
+      "fields": {
+        "mac": {
+          "name": "MAC 地址",
+          "description": "终端的物理地址。"
+        },
+        "tagname": {
+          "name": "规则名称",
+          "description": "显示在爱快后台和 HA 实名中的名称。"
+        },
+        "expires": {
+          "name": "过期时间戳",
+          "description": "Unix 时间戳。到期后规则自动失效。0 为永不过期。"
+        }
+      }
+    },
+    "delete_mac_rule": {
+      "name": "删除 MAC 访问控制规则",
+      "description": "彻底移除指定的 MAC 过滤规则。对应的 HA 开关实体将自动注销。",
+      "fields": {
+        "rule_id": {
+          "name": "规则 ID",
+          "description": "规则的唯一数字 ID（可从实体属性中查看）。"
+        }
+      }
     }
   }
 }
