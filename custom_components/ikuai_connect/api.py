@@ -3,17 +3,14 @@ from __future__ import annotations
 
 import asyncio
 import json
-import logging
 import time
 import pytz
 from datetime import datetime, timedelta
 from typing import Any
-
+from .const import DOMAIN, LOGGER
 from aiohttp import ClientSession
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-
-_LOGGER = logging.getLogger(__name__)
 
 # 定义缓存时长（秒）
 CACHE_TTL = {
@@ -96,7 +93,7 @@ class IkuaiAPI:
                             self._cache[endpoint] = (now, results)
                         return results
             except Exception as err:
-                _LOGGER.debug("API 请求异常 %s: %s", endpoint, err)
+                LOGGER.debug("API 请求异常 %s: %s", endpoint, err)
                 if endpoint in self._cache: return self._cache[endpoint][1]
                 raise
 
@@ -110,7 +107,6 @@ class IkuaiAPI:
             return data.get("results", {})
 
     # --- 基础监控类 (System Monitoring) ---
-
     async def get_system_info(self) -> dict[str, Any]:
         """
         获取系统实时状态 (/api/v4.0/monitoring/system)
@@ -146,7 +142,6 @@ class IkuaiAPI:
         return await self._make_request("GET", "/api/v4.0/monitoring/interfaces-traffic-v6")
 
     # --- 接口与流量类 (Network Interfaces) ---
-
     async def get_iface_status(self) -> dict[str, Any]:
         """
         获取线路状态监控 (/api/v4.0/monitoring/interfaces-status)
@@ -161,7 +156,6 @@ class IkuaiAPI:
     #     return await self._make_request("GET", "/api/v4.0/monitoring/interfaces-config")
 
     # --- 日志与事件类 (Logs & Events) ---
-
     async def get_message_center(self) -> dict[str, Any]:
         """获取消息中心列表 (/api/v4.0/log/message-center)"""
         return await self._make_request("GET", "/api/v4.0/log/message-center?limit=2")
@@ -182,7 +176,6 @@ class IkuaiAPI:
         return await self._make_request("GET", f"/api/v4.0/log/wireless?{params}")
 
     # --- 安全管理类 (Security) ---
-
     async def get_mac_mode(self) -> dict[str, Any]:
         """获取全局MAC访问控制模式 (/api/v4.0/security/mac-mode)"""
         return await self._make_request("GET", "/api/v4.0/security/mac-mode")
@@ -192,7 +185,6 @@ class IkuaiAPI:
         return await self._make_request("GET", "/api/v4.0/security/mac-rules?limit=100")
 
     # --- 升级与备份类 (Upgrade & Backup) ---
-
     async def get_backup_list(self) -> dict[str, Any]:
         """获取备份信息 (/api/v4.0/system/backup)"""
         return await self._make_request("GET", "/api/v4.0/system/backup")
@@ -206,7 +198,6 @@ class IkuaiAPI:
         return await self._make_request("GET", "/api/v4.0/system/upgrade:status")
 
     # --- 存储与维护类 (Storage & Maintenance) ---
-
     async def get_disks(self) -> dict[str, Any]:
         """
         获取系统磁盘信息 (/api/v4.0/system/disks)
@@ -216,7 +207,6 @@ class IkuaiAPI:
         return await self._make_request("GET", "/api/v4.0/system/disks")
 
     # --- 服务支持查询接口 (Service Response Support) ---
-
     async def get_client_traffic_summary(self) -> dict[str, Any]:
         """
         获取终端当日流量统计排行 (/api/v4.0/monitoring/clients-traffic-summary)
@@ -241,7 +231,6 @@ class IkuaiAPI:
         return await self._make_request("GET", endpoint)
 
     # --- 执行动作 (Control Actions) ---
-
     async def trigger_backup(self) -> bool:
         """立即执行备份 (POST)"""
         await self._make_request("POST", "/api/v4.0/system/backup")
@@ -299,14 +288,9 @@ class IkuaiAPI:
         return True
 
     # --- 核心调度器：分级错峰获取 ---
-
     async def get_all_data(self, include_clients: bool = True) -> list[Any]:
-        """
-        【核心优化】：分批并发获取。
-        将 14 个请求分为三个批次，每批内部并发，批次间串行。
-        """
+        """分批并发获取。"""
         async def _get_empty(): return {"data": []}
-
         # 批次 1：核心监控类 (3个并发)
         batch_1 = await asyncio.gather(
             self.get_system_info(),                          # 1 系统负载

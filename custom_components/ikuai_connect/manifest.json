@@ -1,12 +1,12 @@
 {
   "domain": "ikuai_connect",
   "name": "iKuai Connect",
-  "codeowners": ["@hzonz"],
+  "codeowners": ["@PraxiGEN"],
   "config_flow": true,
-  "documentation": "https://github.com/hzonz/ha_ikuai_connect",
+  "documentation": "https://github.com/PraxiGEN/ha_ikuai_connect",
   "integration_type": "device",
   "iot_class": "local_polling",
-  "issue_tracker": "https://github.com/hzonz/ha_ikuai_connect/issues",
+  "issue_tracker": "https://github.com/PraxiGEN/ha_ikuai_connect/issues",
   "requirements": [],
   "version": "1.0.5"
 }
