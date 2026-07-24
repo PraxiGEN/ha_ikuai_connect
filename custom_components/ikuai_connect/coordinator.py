@@ -389,7 +389,7 @@ class IkuaiCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         device_name = self.config_entry.title
         return DeviceInfo(
             identifiers={(DOMAIN, self.host)},
-            name=f"{device_name}",
+            name=f"{device_name} 负载监控",
             manufacturer="iKuai",
             model="iKuai Router",
             sw_version=self._sw_version,
