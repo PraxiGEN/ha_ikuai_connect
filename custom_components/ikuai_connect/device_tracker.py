@@ -1,8 +1,7 @@
 """iKuai Connect 设备追踪平台."""
 from __future__ import annotations
 
-from homeassistant.components.device_tracker import TrackerEntity, SourceType
-from homeassistant.const import STATE_HOME, STATE_NOT_HOME
+from homeassistant.components.device_tracker import BaseScannerEntity, SourceType
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import entity_registry as er
@@ -11,6 +10,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN, LOGGER, CONF_TRACKER_CONFIG
 from .coordinator import IkuaiCoordinator
+from .helpers import normalize_mac
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -32,12 +32,12 @@ async def async_setup_entry(
         # 增量添加逻辑
         for mac, conf in tracker_config.items():
             # 统一使用小写无冒号 MAC + gwid
-            mac_clean = mac.lower().replace(":", "").replace("-", "")
+            mac_clean = normalize_mac(mac).replace(":", "")
             uid = f"{coordinator.gwid}_track_{mac_clean}"
             current_configured_uids.add(uid)
 
             if uid not in added_unique_ids:
-                new_entities.append(IkuaiTracker(coordinator, mac.lower(), conf, uid))
+                new_entities.append(IkuaiTracker(coordinator, normalize_mac(mac), conf, uid))
                 added_unique_ids.add(uid)
 
         if new_entities:
@@ -58,8 +58,8 @@ async def async_setup_entry(
     # 绑定监听：每当协调器数据更新时，触发动态管理
     entry.async_on_unload(coordinator.async_add_listener(_async_manage_entities))
 
-class IkuaiTracker(CoordinatorEntity[IkuaiCoordinator], TrackerEntity):
-    """iKuai 终端追踪实体."""
+class IkuaiTracker(CoordinatorEntity[IkuaiCoordinator], BaseScannerEntity):
+    """iKuai 终端追踪实体（连接型：state 由 is_connected 推导 home/not_home）."""
 
     _attr_has_entity_name = True
     _attr_translation_key = "ikuai_tracker" 
@@ -67,7 +67,7 @@ class IkuaiTracker(CoordinatorEntity[IkuaiCoordinator], TrackerEntity):
     def __init__(self, coordinator: IkuaiCoordinator, mac: str, config: dict, uid: str) -> None:
         """Initialize."""
         super().__init__(coordinator)
-        self._mac = mac
+        self._mac = normalize_mac(mac)
         self._attr_name = config.get("name")
         self._attr_unique_id = uid
         self._attr_device_info = coordinator.device_info
@@ -78,11 +78,6 @@ class IkuaiTracker(CoordinatorEntity[IkuaiCoordinator], TrackerEntity):
         if not self.coordinator.data:
             return False
         return self._mac in self.coordinator.data.get("clients", {})
-
-    @property
-    def state(self) -> str:
-        """返回 HA 标准状态."""
-        return STATE_HOME if self.is_connected else STATE_NOT_HOME
 
     @property
     def source_type(self) -> SourceType:
