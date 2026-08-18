@@ -7,6 +7,8 @@ import time
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from typing import Any
+from urllib.parse import urlencode
+
 from .const import DOMAIN, LOGGER
 from aiohttp import ClientSession
 from homeassistant.core import HomeAssistant
@@ -106,6 +108,68 @@ class IkuaiAPI:
             text = await response.text()
             data = json.loads(text.replace('"data":timeout', '"data":[]'), strict=False)
             return data.get("results", {})
+
+    async def call_custom_api(
+        self,
+        method: str,
+        path: str,
+        params: dict | list | str | None = None,
+        timeout: float = 15,
+        raw: bool = False,
+    ) -> dict[str, Any]:
+        """通用 API 调用（探索性 / 未原生接入的接口）."""
+        # 路径安全校验：仅允许调用路由器自身的 OpenAPI
+        if not path.startswith("/api/"):
+            raise ValueError("path 必须以 /api/ 开头")
+
+        # 参数归一化：字符串按 JSON 解析
+        if isinstance(params, str):
+            params = json.loads(params) if params.strip() else None
+
+        # 拼接 URL / body
+        url = f"{self.host}{path}"
+        json_body: dict | list | None = None
+        if method.upper() == "GET":
+            if isinstance(params, dict):
+                qs = urlencode(params)
+                sep = "&" if "?" in path else "?"
+                url = f"{self.host}{path}{sep}{qs}"
+        else:
+            json_body = params if isinstance(params, (dict, list)) else None
+
+        headers = {
+            "Authorization": f"Bearer {self.token}",
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+        }
+
+        async with self._semaphore:
+            async with asyncio.timeout(timeout):
+                async with self._session.request(
+                    method, url, headers=headers, json=json_body, ssl=False
+                ) as response:
+                    status = response.status
+                    raw_text = await response.text()
+                    # 兼容 iKuai 偶发的 "data":timeout 非法 JSON
+                    raw_text = raw_text.replace('"data":timeout', '"data":[]')
+                    try:
+                        payload = json.loads(raw_text, strict=False)
+                    except json.JSONDecodeError:
+                        payload = {"_raw_text": raw_text}
+
+        if not isinstance(payload, dict):
+            payload = {"_raw": payload}
+
+        # raw=True 返回完整响应体；否则与 _make_request 一致，剥离 results 外壳
+        data_field = payload if raw else payload.get("results", payload)
+
+        return {
+            "success": 200 <= status < 300,
+            "status": status,
+            "code": payload.get("code"),
+            "message": payload.get("message"),
+            "data": data_field,
+        }
 
     # --- 基础监控类 (System Monitoring) ---
     async def get_system_info(self) -> dict[str, Any]:

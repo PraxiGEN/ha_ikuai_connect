@@ -391,6 +391,36 @@
           "description": "The unique numeric ID of the rule (visible in the entity attributes)."
         }
       }
+    },
+    "call_api_service": {
+      "name": "Custom API Call",
+      "description": "Generic caller for any iKuai OpenAPI endpoint, used to fetch data not yet natively integrated or to perform actions.",
+      "fields": {
+        "device_id": {
+          "name": "Target Device",
+          "description": "Select the router device to operate. Only needed when multiple routers are configured."
+        },
+        "path": {
+          "name": "API Path",
+          "description": "Endpoint path starting with /api/, e.g. /api/v4.0/monitoring/clients-online"
+        },
+        "method": {
+          "name": "HTTP Method",
+          "description": "HTTP request method (dropdown). GET fetches data with params appended to the URL query string; POST/PUT/DELETE submit data or perform actions with params sent as the request body. Defaults to GET."
+        },
+        "params": {
+          "name": "Request Params (JSON)",
+          "description": "Parameters as JSON. For GET they are appended to the query string; for POST/PUT/DELETE they are sent as the request body."
+        },
+        "timeout": {
+          "name": "Timeout (seconds)",
+          "description": "Request timeout in seconds. Defaults to 15, maximum 120."
+        },
+        "return_raw": {
+          "name": "Return Raw Response",
+          "description": "When enabled, the data field contains the full response including code/message/results; when disabled, only the business data (results) is returned."
+        }
+      }
     }
   }
 }
