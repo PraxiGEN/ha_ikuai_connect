@@ -9,7 +9,6 @@ import homeassistant.util.dt as dt_util
 from .const import DOMAIN, LOGGER
 from .coordinator import IkuaiCoordinator
 
-
 def _get_coordinator(hass: HomeAssistant, device_id: str | None = None) -> IkuaiCoordinator:
     """根据 device_id 获取对应 coordinator，未指定时自动选择唯一 entry."""
     loaded_entry_ids = hass.data.get(DOMAIN, {}).get("loaded_entries", set())
@@ -36,7 +35,6 @@ def _get_coordinator(hass: HomeAssistant, device_id: str | None = None) -> Ikuai
     raise ValueError(
         "存在多个路由器配置，请通过 device_id 指定目标设备"
     )
-
 
 async def async_setup_services(hass: HomeAssistant) -> None:
     """注册集成级服务（仅注册一次）。"""
@@ -153,6 +151,28 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         await coordinator.api.delete_mac_rule(rule_id)
         await coordinator.async_request_refresh()
 
+    # ---调用自定义 API（万能调用工具）---
+    async def async_call_api(call: ServiceCall) -> ServiceResponse:
+        coordinator = _get_coordinator(hass, call.data.get("device_id"))
+        path = call.data["path"]
+        method = call.data.get("method", "GET").upper()
+        params = call.data.get("params")
+        timeout = call.data.get("timeout", 15)
+        raw = call.data.get("return_raw", False)
+        try:
+            return await coordinator.api.call_custom_api(
+                method=method, path=path, params=params, timeout=timeout, raw=raw
+            )
+        except Exception as err:
+            # 探索性调用失败不应拖垮 HA 服务：统一返回失败结构
+            return {
+                "success": False,
+                "status": None,
+                "code": None,
+                "message": str(err),
+                "data": None,
+            }
+
     # ---注册服务---
     hass.services.async_register(
         DOMAIN, "get_traffic_ranking", async_get_traffic_ranking,
@@ -188,6 +208,18 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             vol.Required("rule_id"): cv.positive_int,
         }),
     )
+    hass.services.async_register(
+        DOMAIN, "call_api_service", async_call_api,
+        supports_response=SupportsResponse.ONLY,
+        schema=vol.Schema({
+            vol.Optional("device_id"): cv.string,
+            vol.Required("path"): cv.string,
+            vol.Optional("method", default="GET"): vol.In(["GET", "POST", "PUT", "DELETE"]),
+            vol.Optional("params", default=None): vol.Any(None, cv.string, dict, list),
+            vol.Optional("timeout", default=15): vol.All(vol.Coerce(float), vol.Range(min=1, max=120)),
+            vol.Optional("return_raw", default=False): cv.boolean,
+        }),
+    )
 
 
 async def async_unload_services(hass: HomeAssistant) -> None:
@@ -202,6 +234,7 @@ async def async_unload_services(hass: HomeAssistant) -> None:
         "get_offline_history",
         "add_mac_rule",
         "delete_mac_rule",
+        "call_api_service",
     ):
         hass.services.async_remove(DOMAIN, service)
 

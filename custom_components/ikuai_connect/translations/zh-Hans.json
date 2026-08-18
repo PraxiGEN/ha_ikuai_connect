@@ -391,6 +391,36 @@
           "description": "规则的唯一数字 ID（可从实体属性中查看）。"
         }
       }
+    },
+    "call_api_service": {
+      "name": "自定义 API 调用",
+      "description": "通用调用爱快路由器任意 OpenAPI 接口，用于获取尚未原生接入的数据或执行操作。",
+      "fields": {
+        "device_id": {
+          "name": "目标设备",
+          "description": "选择要操作的路由器设备。仅配置了多台路由器时需要指定。"
+        },
+        "path": {
+          "name": "接口路径",
+          "description": "以 /api/ 开头的接口路径，例如 /api/v4.0/monitoring/clients-online"
+        },
+        "method": {
+          "name": "请求方法",
+          "description": "HTTP 请求方法（下拉选择）。GET 用于获取数据，参数拼接到 URL 查询串；POST/PUT/DELETE 用于提交数据或执行操作，参数作为请求体发送。默认 GET。"
+        },
+        "params": {
+          "name": "请求参数 (JSON)",
+          "description": "JSON 格式的参数。GET 会拼接到查询串，POST/PUT/DELETE 作为请求体。"
+        },
+        "timeout": {
+          "name": "超时 (秒)",
+          "description": "请求超时时间，默认 15 秒，最大 120。"
+        },
+        "return_raw": {
+          "name": "返回原始响应",
+          "description": "开启后 data 字段返回包含 code/message/results 的完整响应；关闭则只返回业务数据(results)。"
+        }
+      }
     }
   }
 }
