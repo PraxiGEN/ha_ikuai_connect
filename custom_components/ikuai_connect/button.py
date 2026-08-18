@@ -29,6 +29,7 @@ BUTTON_TYPES: Final[tuple[IkuaiButtonEntityDescription, ...]] = (
         icon="mdi:restart",
         device_class=ButtonDeviceClass.RESTART,
         action_type="reboot_main",
+        entity_registry_enabled_default=False,
     ),
     IkuaiButtonEntityDescription(
         key="check_upgrade",
@@ -107,13 +108,17 @@ class IkuaiButton(CoordinatorEntity[IkuaiCoordinator], ButtonEntity):
 
             # 发送翻译后的系统通知
             await self._send_notification(action)
-            # 针对异步耗时操作，延迟刷新数据
+            # 针对异步耗时操作，后台延迟刷新数据（不阻塞按钮响应）
             if action in ["start_upgrade", "backup", "check_upgrade"]:
-                await asyncio.sleep(2)
-                await self.coordinator.async_request_refresh()
+                self.hass.async_create_task(self._delayed_refresh())
 
         except Exception as err:
             LOGGER.error("iKuai 按钮动作 [%s] 执行失败: %s", action, err)
+
+    async def _delayed_refresh(self) -> None:
+        """后台延迟刷新数据."""
+        await asyncio.sleep(2)
+        await self.coordinator.async_request_refresh()
 
     async def _send_notification(self, action: str) -> None:
         """从翻译文件动态抓取消息并发送."""

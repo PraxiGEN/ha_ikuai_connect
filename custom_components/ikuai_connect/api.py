@@ -4,8 +4,8 @@ from __future__ import annotations
 import asyncio
 import json
 import time
-import pytz
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 from typing import Any
 from .const import DOMAIN, LOGGER
 from aiohttp import ClientSession
@@ -16,7 +16,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 CACHE_TTL = {
     # 主设备核心监控类
     "/api/v4.0/monitoring/system": 0,               # 系统负载：实时
-    "/api/v4.0/monitoring/clients-online": 15,       # 终端列表：15秒
+    "/api/v4.0/monitoring/clients-online?limit=500": 15,       # 终端列表：15秒（拉全在线终端，避免分页丢设备）
     "/api/v4.0/monitoring/wireless-statistics": 30,  # 无线统计：30秒
     "/api/v4.0/monitoring/interfaces-traffic-v6": 15, # IPv6流量：15秒    
     "/api/v4.0/monitoring/wireless-score": 60,       # 无线评分：1分钟
@@ -24,10 +24,11 @@ CACHE_TTL = {
     "/api/v4.0/monitoring/interfaces-status": 30,     # 线路状态：30秒
     "/api/v4.0/monitoring/interfaces-config": 3600,  # 线路配置：1小时
     # 日志与事件类
-    "/api/v4.0/log/message-center?limit=5": 60,      # 消息中心：1分钟
+    "/api/v4.0/log/message-center?limit=10&order=desc&order_by=id": 60,      # 消息中心：1分钟（按 id 降序；增量由 coordinator 按内容签名去重）
     "/api/v4.0/log/terminal-presence?limit=10&order=desc&order_by=id": 0,   # 上下线日志：实时
     "/api/v4.0/log/ddns?limit=10&order=desc&order_by=id": 60,   # DDNS日志：1分钟
     "/api/v4.0/log/wireless?limit=10&order=desc&order_by=id": 0,   # 无线日志：实时
+    "/api/v4.0/log/system?limit=10&order=desc&order_by=id": 60,     # 系统日志：1分钟（条目含 id，增量由 coordinator 以 id 游标处理）
     # 安全管理类
     "/api/v4.0/security/mac-mode": 60,               # MAC模式：1分钟
     "/api/v4.0/security/mac-rules?limit=100": 60,    # MAC规则：1分钟
@@ -127,7 +128,7 @@ class IkuaiAPI:
         返回字段说明:
         - data: [ {mac, ip_addr, upload, download, total_up, total_down, termname, comment, client_vendor, interface} ]
         """
-        return await self._make_request("GET", "/api/v4.0/monitoring/clients-online")
+        return await self._make_request("GET", "/api/v4.0/monitoring/clients-online?limit=500")
 
     async def get_wifi_stats(self) -> dict[str, Any]:
         """获取无线AP统计 (/api/v4.0/monitoring/wireless-statistics)"""
@@ -157,8 +158,13 @@ class IkuaiAPI:
 
     # --- 日志与事件类 (Logs & Events) ---
     async def get_message_center(self) -> dict[str, Any]:
-        """获取消息中心列表 (/api/v4.0/log/message-center)"""
-        return await self._make_request("GET", "/api/v4.0/log/message-center?limit=2")
+        """获取消息中心列表 (/api/v4.0/log/message-center)
+
+        按 id 降序（order_by=id）；但 message-center 条目本身不返回 id/timestamp，
+        增量去重由 coordinator 按内容签名完成，故此处仅负责拉取最新一页。
+        """
+        params = "limit=10&order=desc&order_by=id"
+        return await self._make_request("GET", f"/api/v4.0/log/message-center?{params}")
 
     async def get_presence_logs(self) -> dict[str, Any]:
         """获取终端上下线日志 (/api/v4.0/log/terminal-presence)"""
@@ -174,6 +180,15 @@ class IkuaiAPI:
         """获取无线终端上下线日志 (GET /api/v4.0/log/wireless)."""
         params = "limit=10&order=desc&order_by=id"
         return await self._make_request("GET", f"/api/v4.0/log/wireless?{params}")
+
+    async def get_system_logs(self) -> dict[str, Any]:
+        """获取系统运行日志 (GET /api/v4.0/log/system).
+
+        返回条目含 id / timestamp / content（真实固件实测字段），
+        以 id 降序；增量游标由 coordinator 的 get_new_events 按 id 处理。
+        """
+        params = "limit=10&order=desc&order_by=id"
+        return await self._make_request("GET", f"/api/v4.0/log/system?{params}")
 
     # --- 安全管理类 (Security) ---
     async def get_mac_mode(self) -> dict[str, Any]:
@@ -250,7 +265,7 @@ class IkuaiAPI:
     async def trigger_immediate_reboot(self) -> bool:
         """创建一次性计划实现1分钟内重启."""
  
-        tz = pytz.timezone("Asia/Shanghai")
+        tz = ZoneInfo("Asia/Shanghai")
         now = datetime.now(tz)
         reboot_time = now + timedelta(minutes=1)
         payload = {
@@ -307,18 +322,19 @@ class IkuaiAPI:
             self.get_message_center(),                       # 7 消息中心
             self.get_presence_logs(),                     # 8 上下线日志
             self.get_ddns_logs(),                            # 9 DDNS日志       
-            self.get_wireless_logs(),                        # 10 无线日志   
+            self.get_wireless_logs(),                        # 10 无线日志
+            self.get_system_logs(),                          # 11 系统日志 
             return_exceptions=True
         )
 
         # 批次 3：安全与维护 (3个并发)
         batch_3 = await asyncio.gather(                                                                                           # 7
-            self.get_mac_mode(),                              # 11 MAC模式
-            self.get_mac_rules(),                             # 12 MAC规则
-            self.get_backup_list(),                           # 13 备份列表
-            self.get_upgrade_info(),                          # 14 升级信息
-            self.get_upgrade_status(),                        # 15 升级状态
-            self.get_disks(),                                 # 16 磁盘信息
+            self.get_mac_mode(),                              # 12 MAC模式
+            self.get_mac_rules(),                             # 13 MAC规则
+            self.get_backup_list(),                           # 14 备份列表
+            self.get_upgrade_info(),                          # 15 升级信息
+            self.get_upgrade_status(),                        # 16 升级状态
+            self.get_disks(),                                 # 17 磁盘信息
             return_exceptions=True
         )
 

@@ -45,6 +45,12 @@ EVENT_TYPES: Final[tuple[IkuaiEventEntityDescription, ...]] = (
         translation_key="wireless_terminal_log",
         icon="mdi:wifi-marker",
     ),
+    IkuaiEventEntityDescription(
+        key="system_log",
+        name="System Log Events",
+        translation_key="system_log",
+        icon="mdi:math-log",
+    ),
 )
 
 async def async_setup_entry(
@@ -107,6 +113,8 @@ class IkuaiEvent(EventEntity, CoordinatorEntity[IkuaiCoordinator]):
             fired = self._handle_ddns(events_data.get("ddns", []))
         elif key == "wireless_terminal_log":
             fired = self._handle_wifi(events_data.get("wifi", []))
+        elif key == "system_log":
+            fired = self._handle_system(events_data.get("system", []))
 
         if fired:
             self.async_write_ha_state()
@@ -147,7 +155,7 @@ class IkuaiEvent(EventEntity, CoordinatorEntity[IkuaiCoordinator]):
                 "os": item.get("systype"),
                 "vendor": item.get("devtype"),
                 "model": item.get("client_model"),
-                "id": item.get("id"),               
+                "id": item.get("id"),
                 "timestamp": item.get("date_time")
             })
             has_fired = True
@@ -193,6 +201,25 @@ class IkuaiEvent(EventEntity, CoordinatorEntity[IkuaiCoordinator]):
                 "action": item.get("action"),
                 "reason": item.get("errmsg"),
                 "id": item.get("id")
+            })
+            has_fired = True
+        return has_fired
+
+    def _handle_system(self, items: Iterable[dict[str, Any]]) -> bool:
+        has_fired = False
+        for item in items:
+            event_id = f"s_{item.get('id')}"
+            if self._is_duplicate(event_id):
+                continue
+
+            content = item.get("content") or "system_log"
+            self._fire_smart_event(content, {
+                "content": content,
+                "level": item.get("level"),
+                "module": item.get("module"),
+                "process": item.get("process"),
+                "id": item.get("id"),
+                "timestamp": item.get("timestamp"),
             })
             has_fired = True
         return has_fired
