@@ -83,23 +83,24 @@
       "memory_usage": {
         "name": "Memory Usage",
         "state_attributes": {
-          "total": { "name": "Total Memory" },
-          "available": { "name": "Available Memory" },
-          "free": { "name": "Free Memory" },
-          "cached": { "name": "Cached Memory" },
-          "buffers": { "name": "Buffer Memory" }
+          "memory_detail": { "name": "Memory Details" }
         }
       },
       "online_users": {
         "name": "Total Online Devices",
         "state_attributes": {
-          "count_2g": { "name": "2.4G Devices" },
-          "count_5g": { "name": "5G Devices" },
-          "count_wired": { "name": "Wired Devices" },
-          "count_wireless": { "name": "Wireless Devices" }
+          "online_user_detail": { "name": "Online Device Details" }
         }
       },
-      "connection_count": { "name": "Current Connection Count" },
+      "connection_count": {
+        "name": "Current Connection Count",
+        "state_attributes": {
+          "tcp": { "name": "TCP Connections" },
+          "udp": { "name": "UDP Connections" },
+          "icmp": { "name": "ICMP Connections" },
+          "ipv6": { "name": "IPv6 Connections" }
+        }
+      },
       "sys_upload_speed": {
         "name": "Total Upload Speed",
         "state_attributes": {
@@ -125,60 +126,73 @@
         }
       },
       "uptime": {
-        "name": "System Uptime",
-        "state_attributes": {
-          "wan_ipv4": { "name": "WAN IPv4 Address" },
-          "firmware_version": { "name": "Firmware Details" }
-        }
+        "name": "System Uptime"
       },
       "temperature": { "name": "System Temperature" },
       "ap_online": {
         "name": "Online AP Count",
         "state_attributes": {
-          "total_ap": { "name": "Total APs" },
-          "offline_ap": { "name": "Offline APs" },
-          "roaming_supported": { "name": "Roaming‑Supported APs" },
-          "prefer_5g_aps": { "name": "5G‑Preferred APs" },
-          "clients_2g": { "name": "2.4G Clients" },
-          "clients_5g": { "name": "5G Clients" },
-          "active_clients": { "name": "Active Clients" },
-          "signal_coverage": { "name": "Signal Coverage" },
-          "network_delay": { "name": "Network Delay" },
-          "packet_loss": { "name": "Packet Loss" },
-          "airtime_health_score": { "name": "Airtime Health Score" }
+          "wireless_detail": { "name": "Wireless Details" }
         }
       },
       "upload_speed": { "name": "{iface} Upload Speed" },
       "download_speed": { "name": "{iface} Download Speed" },
       "total_up": { "name": "{iface} Total Upload" },
       "total_down": { "name": "{iface} Total Download" },
+      "wan_connection_status": {
+        "name": "{iface} WAN Connection Status",
+        "state": {
+          "online": "Online",
+          "offline": "Offline"
+        },
+        "state_attributes": {
+          "protocol": { "name": "Dial Protocol" },
+          "ipv4": { "name": "IPv4 Address" },
+          "gateway": { "name": "Gateway" },
+          "auto_switch": { "name": "Auto Switch" },
+          "errmsg": { "name": "Error Message" },
+          "parent_interface": { "name": "Parent Interface" }
+        }
+      },
+      "wan_ipv4_addr": { "name": "{iface} WAN IPv4 Address" },
+      "wan_v6_upload_speed": { "name": "{iface} IPv6 Upload Speed" },
+      "wan_v6_download_speed": { "name": "{iface} IPv6 Download Speed" },
+      "wan_v6_total_up": { "name": "{iface} IPv6 Total Upload" },
+      "wan_v6_total_down": { "name": "{iface} IPv6 Total Download" },
+      "wan_v6_conn": { "name": "{iface} IPv6 Connection Count" },
+      "wan_balance_snapshot": {
+        "name": "WAN Load Balance Snapshot",
+        "state_attributes": {
+          "lines": { "name": "Per-Line Details" }
+        }
+      },
       "upgrade_status": {
         "name": "Firmware Upgrade Status",
         "state_attributes": {
-          "current_version": { "name": "Current Version" },
-          "latest_version": { "name": "Latest Version" },
-          "version_type": { "name": "Version Type" },
+          "upgrade_detail": { "name": "Upgrade Details" }
+        }
+      },
+      "firmware_version": {
+        "name": "Firmware Version",
+        "state_attributes": {
+          "version": { "name": "Current Version" },
+          "verstring": { "name": "Full Version String" },
+          "modelname": { "name": "Model Name" },
           "build_date": { "name": "Build Date" },
-          "update_content": { "name": "Update Content" },
-          "last_check": { "name": "Last Check Time" }
+          "arch": { "name": "Architecture" },
+          "sysbit": { "name": "System Bits" }
         }
       },
       "latest_backup": {
         "name": "Latest Backup File",
         "state_attributes": {
-          "backtype": { "name": "Backup Type" },
-          "filesize": { "name": "File Size" },
-          "version": { "name": "Version" }
+          "detail": { "name": "Backup Details" }
         }
       },
       "disk_total_capacity": {
         "name": "Total Disk Capacity",
         "state_attributes": {
-          "model": { "name": "Disk Model" },
-          "disk": { "name": "Disk Name" },
-          "system": { "name": "System Disk" },
-          "type": { "name": "Disk Type" },
-          "block_size": { "name": "Block Size" }
+          "base_info": { "name": "Disk Base Info" }
         }
       },
       "disk_usage_rate": { "name": "Overall Usage Rate" },
