@@ -89,18 +89,19 @@ class IkuaiCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             if not self.gwid:
                 self.gwid = sysinfo.get("gwid") or self.config_entry.entry_id
 
-            # ---WAN IPv4 提取 (物理网口 wan1) ---
+            # ---WAN IPv4 提取（汇总所有在线 WAN 拨号线路的 IP，适配多拨/多 WAN）---
             iface_check_list = iface_status_res.get("iface_check", []) if isinstance(iface_status_res, dict) else []
-            wan_v4_ip = "Disconnected"
+            wan_v4_list = []
             for check in iface_check_list:
-                if check.get("parent_interface") == "wan1":
-                    ip = check.get("ip_addr")
-                    if ip and ip != "--":
-                        wan_v4_ip = ip
-                        if check.get("result") == "success": break
+                ip = check.get("ip_addr")
+                if ip and ip != "--" and str(check.get("result", "")).lower() in ("success", "ok", "1"):
+                    wan_v4_list.append(ip)
+            wan_v4_ip = ", ".join(wan_v4_list) if wan_v4_list else "Disconnected"
 
             # ---IPv6 流量与连接数汇总 ---
             v6_data_list = v6_res.get("data", []) if isinstance(v6_res, dict) else []
+            # 分口 IPv6 映射，供接口设备生成 WAN IPv6 传感器
+            v6_by_iface = {item.get("interface"): item for item in v6_data_list if isinstance(item, dict)}
             v6_total = {"up": 0, "down": 0, "t_up": 0, "t_down": 0, "conn": 0}
             for v6_item in v6_data_list:
                 v6_total["up"] += int(v6_item.get("upload", 0))
@@ -117,6 +118,7 @@ class IkuaiCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 "uptime": int(sysinfo.get("uptime", 0)),
                 "temperature": float(sysinfo.get("cputemp", [0])[0]) if sysinfo.get("cputemp") else 0.0,
                 "ver_string": ver_string,
+                "verinfo": verinfo,
                 "wan_ip_v4": wan_v4_ip,
                 "online_users": int(users.get("count", 0)),
                 "online_user_detail": {k: v for k, v in users.items() if k != "count"},
@@ -206,19 +208,51 @@ class IkuaiCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             # ---处理接口监控 (Interfaces) ---
             processed_ifaces = {}
             iface_stream_list = iface_status_res.get("iface_stream", []) if isinstance(iface_status_res, dict) else []
-            iface_to_parent = {i.get("interface"): i.get("parent_interface") for i in iface_check_list}
+            iface_check_list = iface_status_res.get("iface_check", []) if isinstance(iface_status_res, dict) else []
+            check_by_iface = {i.get("interface"): i for i in iface_check_list}
+            # 父口 → 子线路映射，用于聚合父口（如 wan1）的在线状态推导
+            parent_to_children = {}
+            for c in iface_check_list:
+                parent_to_children.setdefault(c.get("parent_interface"), []).append(c)
 
             for s in iface_stream_list:
                 logic_name = s.get("interface")
-                parent_port = iface_to_parent.get(logic_name, logic_name)
-                if not (parent_port.startswith("wan") or parent_port.startswith("lan")): continue
-                if any(logic_name.startswith(p) for p in ["vwan", "adsl", "vlan", "pppoe"]):
-                    if parent_port in processed_ifaces: continue 
-                    continue
-                processed_ifaces[parent_port] = {
-                    "ip": s.get("ip_addr") if s.get("ip_addr") != "--" else "0.0.0.0",
+                chk = check_by_iface.get(logic_name)
+                v6 = v6_by_iface.get(logic_name)
+                if chk is not None:
+                    # 真实拨号线路（adsl / vwan / pppoe 等）：用 result 判连断
+                    connected = str(chk.get("result", "")).lower() in ("success", "ok", "1")
+                    is_wan_line = True
+                elif logic_name.startswith("wan"):
+                    # 聚合父口（如 wan1）：在线 = 任一子线路在线
+                    children = parent_to_children.get(logic_name, [])
+                    connected = any(str(c.get("result", "")).lower() in ("success", "ok", "1") for c in children)
+                    is_wan_line = True
+                else:
+                    connected = False
+                    is_wan_line = False
+                processed_ifaces[logic_name] = {
+                    "ip": s.get("ip_addr") if s.get("ip_addr") not in ("--", None) else "",
                     "upload_speed": int(s.get("upload", 0)), "download_speed": int(s.get("download", 0)),
                     "total_up": int(s.get("total_up", 0)), "total_down": int(s.get("total_down", 0)),
+                    # WAN 拨号状态：internet 字段为拨号协议类型（PPPOE/DHCP），非公网可达
+                    "connected": connected,
+                    "protocol": chk.get("internet") if chk else None,
+                    "gateway": chk.get("gateway") if chk else None,
+                    "auto_switch": chk.get("auto_switch") if chk else None,
+                    "errmsg": chk.get("errmsg") if chk else None,
+                    "parent_interface": chk.get("parent_interface") if chk else None,
+                    "is_wan_line": is_wan_line,
+                    # has_v6：该接口是否在 interfaces-traffic-v6 中真实返回了数据行，
+                    # 即「本线路开启了 IPv6」（未开启则接口完全不出现于该接口响应）。
+                    # 用于传感器平台按真实配置动态排除 IPv6 实体，兼容不同用户的网口拓扑。
+                    "has_v6": isinstance(v6, dict),
+                    # 分口 IPv6 流量（total 字段为字符串，需 int 化；无则返回 0）
+                    "v6_upload_speed": int(v6.get("upload", 0)) if isinstance(v6, dict) else 0,
+                    "v6_download_speed": int(v6.get("download", 0)) if isinstance(v6, dict) else 0,
+                    "v6_total_up": int(v6.get("total_upload") or 0) if isinstance(v6, dict) else 0,
+                    "v6_total_down": int(v6.get("total_download") or 0) if isinstance(v6, dict) else 0,
+                    "v6_conn": int(v6.get("conn", 0)) if isinstance(v6, dict) else 0,
                 }
 
             # ---系统维护管理子设备---
@@ -384,11 +418,34 @@ class IkuaiCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     "partitions": partitions
                 }
 
+            # ---多 WAN 负载均衡快照（只读派生，基于各 WAN 线路实时速率占比）---
+            wan_line_names = [n for n, v in processed_ifaces.items() if v.get("is_wan_line")]
+            total_wan_down = sum(processed_ifaces[n]["download_speed"] for n in wan_line_names) or 1
+            balance_lines = {}
+            for n in wan_line_names:
+                v = processed_ifaces[n]
+                d = v["download_speed"]
+                balance_lines[n] = {
+                    "protocol": v.get("protocol"),
+                    "ipv4": v.get("ip"),
+                    "connected": v.get("connected"),
+                    "upload_speed": v["upload_speed"],
+                    "download_speed": d,
+                    "download_share": round(d / total_wan_down * 100, 1),
+                    "v6_download_speed": v.get("v6_download_speed", 0),
+                }
+            active_wan = [n for n in wan_line_names if processed_ifaces[n]["connected"]]
+            wan_balance = {
+                "_state": f"{len(active_wan)}/{len(wan_line_names)} 在线" if active_wan else "全部离线",
+                "lines": balance_lines,
+            }
+
             # --- 整合所有模块 ---
             return {
                 "system": processed_sys,
                 "clients": final_clients_map,
                 "interfaces": processed_ifaces,
+                "wan_balance": wan_balance,
                 "backup": latest_backup,
                 "maintenance": processed_maint,
                 "disks": processed_disks,

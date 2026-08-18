@@ -83,23 +83,24 @@
       "memory_usage": {
         "name": "内存使用率",
         "state_attributes": {
-          "total": { "name": "内存总量" },
-          "available": { "name": "可用内存" },
-          "free": { "name": "剩余内存" },
-          "cached": { "name": "缓存内存" },
-          "buffers": { "name": "缓冲内存" }
+          "memory_detail": { "name": "内存详情" }
         }
       },
       "online_users": {
         "name": "在线设备总数",
         "state_attributes": {
-          "count_2g": { "name": "2.4G 设备数" },
-          "count_5g": { "name": "5G 设备数" },
-          "count_wired": { "name": "有线设备数" },
-          "count_wireless": { "name": "无线设备数" }
+          "online_user_detail": { "name": "在线设备详情" }
         }
       },
-      "connection_count": { "name": "当前连接总数" },
+      "connection_count": {
+        "name": "当前连接总数",
+        "state_attributes": {
+          "tcp": { "name": "TCP 连接数" },
+          "udp": { "name": "UDP 连接数" },
+          "icmp": { "name": "ICMP 连接数" },
+          "ipv6": { "name": "IPv6 连接数" }
+        }
+      },
       "sys_upload_speed": { 
         "name": "总上传速度", 
         "state_attributes": { 
@@ -125,60 +126,73 @@
         } 
       },
       "uptime": {
-        "name": "运行时间",
-        "state_attributes": {
-          "wan_ipv4": { "name": "WAN IPv4 地址" },
-          "firmware_version": { "name": "固件版本" }
-        }
+        "name": "运行时间"
       },
       "temperature": { "name": "系统温度" },
       "ap_online": { 
         "name": "在线 AP 数量", 
         "state_attributes": {
-          "total_ap": { "name": "AP总数" },
-          "offline_ap": { "name": "离线AP数量" },
-          "roaming_supported": { "name": "支持漫游的AP数量" },
-          "prefer_5g_aps": { "name": "优先连接5G的AP数量" },
-          "clients_2g": { "name": "连接2.4G的设备数量" },
-          "clients_5g": { "name": "连接5G的设备数量" },
-          "active_clients": { "name": "活跃设备数量" },
-          "signal_coverage": { "name": "信号覆盖率" },
-          "network_delay": { "name": "网络延迟" },
-          "packet_loss": { "name": "丢包率" },
-          "airtime_health_score": { "name": "空中健康分数" }
+          "wireless_detail": { "name": "无线详情" }
         }
       },
       "upload_speed": { "name": "{iface} 实时上传速度" },
       "download_speed": { "name": "{iface} 实时下载速度" },
       "total_up": { "name": "{iface} 累计上传流量" },
       "total_down": { "name": "{iface} 累计下载流量" },
+      "wan_connection_status": {
+        "name": "{iface} 连接状态",
+        "state": {
+          "online": "已连接",
+          "offline": "已断开"
+        },
+        "state_attributes": {
+          "protocol": { "name": "拨号协议" },
+          "ipv4": { "name": "IPv4 地址" },
+          "gateway": { "name": "网关地址" },
+          "auto_switch": { "name": "自动切换" },
+          "errmsg": { "name": "错误信息" },
+          "parent_interface": { "name": "所属父接口" }
+        }
+      },
+      "wan_ipv4_addr": { "name": "{iface} IPv4 地址" },
+      "wan_v6_upload_speed": { "name": "{iface} IPv6 上传速度" },
+      "wan_v6_download_speed": { "name": "{iface} IPv6 下载速度" },
+      "wan_v6_total_up": { "name": "{iface} IPv6 累计上传" },
+      "wan_v6_total_down": { "name": "{iface} IPv6 累计下载" },
+      "wan_v6_conn": { "name": "{iface} IPv6 连接数" },
+      "wan_balance_snapshot": {
+        "name": "多 WAN 负载均衡快照",
+        "state_attributes": {
+          "lines": { "name": "各线路详情" }
+        }
+      },
       "upgrade_status": { 
         "name": "固件更新状态",
         "state_attributes": {
-          "current_version": { "name": "当前版本" },
-          "latest_version": { "name": "最新版本" },
-          "version_type": { "name": "版本类型" },
-          "build_date": { "name": "编译日期" },
-          "update_content": { "name": "更新内容" },
-          "last_check": { "name": "上次检查时间" }
+          "upgrade_detail": { "name": "更新详情" }
         }
-      },  
+      },
+      "firmware_version": {
+        "name": "版本固件",
+        "state_attributes": {
+          "version": { "name": "当前版本" },
+          "verstring": { "name": "完整版本号" },
+          "modelname": { "name": "机型名称" },
+          "build_date": { "name": "编译日期" },
+          "arch": { "name": "处理器架构" },
+          "sysbit": { "name": "系统位数" }
+        }
+      },
       "latest_backup": { 
         "name": "最后备份文件", 
         "state_attributes": {
-          "backtype": { "name": "备份类型" },
-          "filesize": { "name": "文件大小" },
-          "version": { "name": "版本号" }
+          "detail": { "name": "备份详情" }
         }
       },      
       "disk_total_capacity": { 
         "name": "物理总容量",
         "state_attributes": {
-          "model": { "name": "磁盘型号" },
-          "disk": { "name": "磁盘名称" },
-          "system": { "name": "是否系统盘" },
-          "type": { "name": "磁盘类型" },
-          "block_size": { "name": "磁盘块大小" }
+          "base_info": { "name": "磁盘基础信息" }
         }
       },  
       "disk_usage_rate": { "name": "综合使用率" },
