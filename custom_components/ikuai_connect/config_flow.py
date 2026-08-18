@@ -36,7 +36,7 @@ from .const import (
     DOMAIN,
     LOGGER,
 )
-from .helpers import extract_name_from_label
+from .helpers import extract_name_from_label, normalize_mac
 
 class IkuaiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """处理 iKuai Connect 的初次配置和重新配置."""
@@ -248,7 +248,7 @@ class IkuaiOptionsFlowHandler(config_entries.OptionsFlow):
 
             self._discovered_map = {}
             for item in lan_list:
-                mac = item.get("mac", "").lower()
+                mac = normalize_mac(item.get("mac", ""))
                 if not mac or mac in existing_trackers:
                     continue
 
@@ -301,7 +301,7 @@ class IkuaiOptionsFlowHandler(config_entries.OptionsFlow):
 
         if user_input is not None:
             tracker_config = self._temp_options.setdefault(CONF_TRACKER_CONFIG, {})
-            tracker_config[current_mac.lower()] = {
+            tracker_config[normalize_mac(current_mac)] = {
                 "name": user_input[CONF_NAME],
                 "buffer": user_input[CONF_OFFLINE_GRACE_PERIOD],
             }
