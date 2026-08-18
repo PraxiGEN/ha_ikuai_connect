@@ -242,6 +242,17 @@
           "reason": { "name": "Reason" },
           "time": { "name": "Timestamp" }
         }
+      },
+      "system_log": {
+        "name": "System Log Events",
+        "state_attributes": {
+          "content": { "name": "Content" },
+          "level": { "name": "Level" },
+          "module": { "name": "Module" },
+          "process": { "name": "Process" },
+          "id": { "name": "ID" },
+          "timestamp": { "name": "Timestamp" }
+        }
       }
     },
     "select": {
@@ -309,12 +320,22 @@
     },
     "get_traffic_ranking": {
       "name": "Get Today's Traffic Ranking",
-      "description": "Retrieve today's total traffic usage for all terminals, measured in MB."
+      "description": "Retrieve today's total traffic usage for all terminals, measured in MB.",
+      "fields": {
+        "device_id": {
+          "name": "Target Device",
+          "description": "Select the router device to query. Only needed when multiple routers are configured."
+        }
+      }
     },
     "get_protocol_stats": {
       "name": "Get Protocol Distribution",
-      "description": "Retrieve protocol‑based traffic statistics for the specified terminal over the last 24 hours (e.g., to determine whether the device was streaming video or downloading files).",
+      "description": "Retrieve protocol-based traffic statistics for the specified terminal over the last 24 hours (e.g., to determine whether the device was streaming video or downloading files).",
       "fields": {
+        "device_id": {
+          "name": "Target Device",
+          "description": "Select the router device to query. Only needed when multiple routers are configured."
+        },
         "mac": {
           "name": "MAC Address",
           "description": "The terminal's MAC address."
@@ -327,12 +348,22 @@
     },
     "get_offline_history": {
       "name": "Get Offline Terminal History",
-      "description": "Retrieve the latest 20 offline records for terminals, measured in MB."
+      "description": "Retrieve the latest 20 offline records for terminals, measured in MB.",
+      "fields": {
+        "device_id": {
+          "name": "Target Device",
+          "description": "Select the router device to query. Only needed when multiple routers are configured."
+        }
+      }
     },
     "add_mac_rule": {
       "name": "Add MAC Access Control Rule",
       "description": "Create a new MAC whitelist/blacklist rule in iKuai. After creation, the integration will automatically generate the corresponding switch entity.",
       "fields": {
+        "device_id": {
+          "name": "Target Device",
+          "description": "Select the router device to operate. Only needed when multiple routers are configured."
+        },
         "mac": {
           "name": "MAC Address",
           "description": "The physical MAC address of the terminal."
@@ -351,6 +382,10 @@
       "name": "Delete MAC Access Control Rule",
       "description": "Completely remove the specified MAC filtering rule. The corresponding Home Assistant switch entity will be automatically removed.",
       "fields": {
+        "device_id": {
+          "name": "Target Device",
+          "description": "Select the router device to operate. Only needed when multiple routers are configured."
+        },
         "rule_id": {
           "name": "Rule ID",
           "description": "The unique numeric ID of the rule (visible in the entity attributes)."

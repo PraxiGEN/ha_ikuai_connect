@@ -7,7 +7,7 @@ from typing import Any
 
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.helpers.device_registry import DeviceInfo
-from .helpers import extract_name_from_label
+from .helpers import extract_name_from_label, normalize_mac
 from .const import (
     DOMAIN,
     LOGGER,
@@ -27,10 +27,10 @@ class IkuaiCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.api = api
         self.host = host
         self.gwid = None  # 主网关 ID
-        self.last_msg_id = None
         self.last_presence_id = None
         self.last_ddns_id = None
         self.last_wifi_id = None
+        self.last_system_log_id = None
         self._hostname = "iKuai"
         self._last_seen: dict[str, float] = {}
 
@@ -39,10 +39,16 @@ class IkuaiCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         try:
             # 异步并发抓取所有端点的数据
             results = await self.api.get_all_data()
-            # 任务预检逻辑
-            for i in [0, 1, 2]:
-                if isinstance(results[i], Exception):
-                    raise results[i]
+
+            # ---安全解包：将异常/非字典结果降级为空字典，避免 AttributeError 拖垮整体更新---
+            def _safe(result):
+                if isinstance(result, Exception):
+                    LOGGER.warning("API 请求失败，降级为空数据: %s", result)
+                    return {}
+                return result if isinstance(result, dict) else {}
+
+            results = [_safe(r) for r in results]
+
             # --- 正确解包变量 (顺序必须与 api.py 完全一致) ---
             (
                 sys_res,            # 0 系统信息（get_system_info）
@@ -57,7 +63,9 @@ class IkuaiCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 ddns_log_res,      # 8 DDNS 日志（get_ddns_logs）
                 wireless_log_res,  # 9 无线日志（get_wireless_logs）
 
-                mac_mode_res,       # 10 MAC 模式（get_mac_mode）
+                system_log_res,    # 10 系统日志（get_system_logs）
+
+                mac_mode_res,       # 11 MAC 模式（get_mac_mode）
                 mac_rules_res,      # 11 MAC 规则（get_mac_rules）
                 backup_res,         # 12 备份列表（get_backup_list）
                 up_info_res,        # 13 升级信息（get_upgrade_info）
@@ -161,7 +169,7 @@ class IkuaiCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 for c in clients_res.get("data", []):
                     if "mac" not in c: continue
                     
-                    mac_l = str(c["mac"]).lower().replace("-", ":")
+                    mac_l = normalize_mac(c["mac"])
                     
                     fallback_name = (
                         c.get("termname") 
@@ -249,15 +257,28 @@ class IkuaiCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             new_presence, _ = get_new_events(presence_log_res, "last_presence_id")
             new_ddns, _ = get_new_events(ddns_log_res, "last_ddns_id")
             new_wifi, _ = get_new_events(wireless_log_res, "last_wifi_id")
+            new_system, _ = get_new_events(system_log_res, "last_system_log_id")
 
             # ---处理消息中心增量---
+            # 实测 message-center 条目不含 id / timestamp，仅含 status/type/detail/title，
+            # 故无法用 id 游标；改用「内容签名」去重（type|title|detail）。
+            # 请求按 order_by=id 降序返回，新增条目出现在队首，签名未出现过的即为新消息。
             new_messages = []
-            msg_res_data = msg_center_res.get("data", []) if isinstance(msg_center_res, dict) else []
+            msg_raw = msg_center_res if isinstance(msg_center_res, dict) else {}
+            msg_res_data = msg_raw.get("data")
+            if msg_res_data is None:
+                msg_res_data = msg_raw.get("results", {}).get("data", [])
             if msg_res_data:
-                curr_max_m = msg_res_data[0].get("id", 0)
-                if self.last_msg_id is not None and curr_max_m > self.last_msg_id:
-                    new_messages = [m for m in msg_res_data if m.get("id") > self.last_msg_id]
-                self.last_msg_id = curr_max_m
+                if not hasattr(self, "_seen_msg_sigs"):
+                    self._seen_msg_sigs = set()
+                for m in msg_res_data:
+                    sig = "|".join(str(m.get(k)) for k in ("type", "title", "detail"))
+                    if sig not in self._seen_msg_sigs:
+                        self._seen_msg_sigs.add(sig)
+                        new_messages.append(m)
+                # 控制内存：仅保留最近 200 条签名
+                if len(self._seen_msg_sigs) > 200:
+                    self._seen_msg_sigs = set(list(self._seen_msg_sigs)[-100:])
 
             # ---安全管理子设备---
             # ---处理安全管理 (Security) ---
@@ -376,6 +397,7 @@ class IkuaiCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     "presence": new_presence,
                     "ddns": new_ddns,
                     "wifi": new_wifi,
+                    "system": new_system,
                     "messages": new_messages
                 }
             }

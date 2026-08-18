@@ -3,12 +3,12 @@ from __future__ import annotations
 
 from typing import Final, Callable, Any
 from dataclasses import dataclass
+
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,
     SensorEntityDescription,
     SensorStateClass,
-    
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
