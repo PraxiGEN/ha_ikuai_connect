@@ -11,10 +11,9 @@ from .coordinator import IkuaiCoordinator
 
 def _get_coordinator(hass: HomeAssistant, device_id: str | None = None) -> IkuaiCoordinator:
     """根据 device_id 获取对应 coordinator，未指定时自动选择唯一 entry."""
-    loaded_entry_ids = hass.data.get(DOMAIN, {}).get("loaded_entries", set())
     entries = [
         e for e in hass.config_entries.async_entries(DOMAIN)
-        if e.entry_id in loaded_entry_ids
+        if e.runtime_data is not None
     ]
 
     if not entries:
@@ -38,9 +37,8 @@ def _get_coordinator(hass: HomeAssistant, device_id: str | None = None) -> Ikuai
 
 async def async_setup_services(hass: HomeAssistant) -> None:
     """注册集成级服务（仅注册一次）。"""
-    if hass.data.setdefault(DOMAIN, {}).get("services_registered"):
+    if hass.services.has_service(DOMAIN, "call_api_service"):
         return
-    hass.data[DOMAIN]["services_registered"] = True
 
     # ---获取流量排行---
     async def async_get_traffic_ranking(call: ServiceCall) -> ServiceResponse:
@@ -223,11 +221,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
 
 
 async def async_unload_services(hass: HomeAssistant) -> None:
-    """当最后一个 entry 卸载时，注销集成级服务。"""
-    loaded_entry_ids = hass.data.get(DOMAIN, {}).get("loaded_entries", set())
-    if loaded_entry_ids:
-        return  # 还有其他 entry 在运行，不注销服务
-
+    """注销集成级服务（仅在所有 entry 均卸载后调用）。"""
     for service in (
         "get_traffic_ranking",
         "get_protocol_stats",
@@ -237,5 +231,3 @@ async def async_unload_services(hass: HomeAssistant) -> None:
         "call_api_service",
     ):
         hass.services.async_remove(DOMAIN, service)
-
-    hass.data.get(DOMAIN, {}).pop("services_registered", None)

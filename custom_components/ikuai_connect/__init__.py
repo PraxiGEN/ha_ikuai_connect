@@ -29,9 +29,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: IkuaiConfigEntry) -> boo
     await coordinator.async_config_entry_first_refresh()
     entry.runtime_data = coordinator
 
-    # 追踪已加载的 entry，用于集成级服务单例管理
-    hass.data.setdefault(DOMAIN, {}).setdefault("loaded_entries", set()).add(entry.entry_id)
-
     # 注册集成级服务（单例，仅注册一次）
     await async_setup_services(hass)
 
@@ -51,9 +48,12 @@ async def async_unload_entry(hass: HomeAssistant, entry: IkuaiConfigEntry) -> bo
     """卸载集成."""
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unload_ok:
-        loaded = hass.data.get(DOMAIN, {}).get("loaded_entries", set())
-        loaded.discard(entry.entry_id)
-        # 最后一个 entry 卸载时，注销集成级服务
-        if not loaded:
+        # 清空运行期数据，标记本 entry 已卸载
+        entry.runtime_data = None
+        # 仅当所有 entry 均卸载时，注销集成级服务
+        if not any(
+            e.runtime_data is not None
+            for e in hass.config_entries.async_entries(DOMAIN)
+        ):
             await async_unload_services(hass)
     return unload_ok
