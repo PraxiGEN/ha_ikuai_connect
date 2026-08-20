@@ -48,12 +48,13 @@ async def async_unload_entry(hass: HomeAssistant, entry: IkuaiConfigEntry) -> bo
     """卸载集成."""
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unload_ok:
-        # 清空运行期数据，标记本 entry 已卸载
-        entry.runtime_data = None
-        # 仅当所有 entry 均卸载时，注销集成级服务
+        # runtime_data 由框架在卸载成功后自动 delattr 清空（无类级默认值），
+        # 必须用 getattr 防御式取值。判定「是否还有其他已加载 entry」时，
+        # 排除当前正在卸载的 entry 本身。
         if not any(
-            e.runtime_data is not None
-            for e in hass.config_entries.async_entries(DOMAIN)
+            getattr(other, "runtime_data", None) is not None
+            for other in hass.config_entries.async_entries(DOMAIN)
+            if other.entry_id != entry.entry_id
         ):
             await async_unload_services(hass)
     return unload_ok
