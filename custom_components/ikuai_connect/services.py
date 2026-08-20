@@ -11,9 +11,11 @@ from .coordinator import IkuaiCoordinator
 
 def _get_coordinator(hass: HomeAssistant, device_id: str | None = None) -> IkuaiCoordinator:
     """根据 device_id 获取对应 coordinator，未指定时自动选择唯一 entry."""
+    # runtime_data 由框架在卸载后 delattr 删除（无类级默认值），
+    # 必须用 getattr 防御式取值，避免命中已卸载 entry 时抛 AttributeError。
     entries = [
         e for e in hass.config_entries.async_entries(DOMAIN)
-        if e.runtime_data is not None
+        if getattr(e, "runtime_data", None) is not None
     ]
 
     if not entries:
