@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import re
 from typing import Final, Callable, Any
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -228,7 +228,6 @@ WAN_STATUS_SENSORS: Final[tuple[IkuaiSensorEntityDescription, ...]] = (
         translation_key="wan_connection_status",
         icon="mdi:wan",
         entity_category=EntityCategory.DIAGNOSTIC,
-        entity_registry_enabled_default=False,
         value_fn=lambda d: "online" if d.get("connected") else "offline",
         attr_fn=lambda d: {
             "protocol": d.get("protocol"),
@@ -245,7 +244,6 @@ WAN_STATUS_SENSORS: Final[tuple[IkuaiSensorEntityDescription, ...]] = (
         translation_key="wan_ipv4_addr",
         icon="mdi:ip-network",
         entity_category=EntityCategory.DIAGNOSTIC,
-        entity_registry_enabled_default=False,
         value_fn=lambda d: d.get("ip") or "—",
     ),
 )
@@ -255,7 +253,6 @@ WAN_V6_SENSORS: Final[tuple[IkuaiSensorEntityDescription, ...]] = (
     IkuaiSensorEntityDescription(
         key="v6_upload_speed", name="IPv6 Upload Speed", translation_key="wan_v6_upload_speed",
         icon="mdi:upload-network", device_class=SensorDeviceClass.DATA_RATE,
-        entity_registry_enabled_default=False,
         native_unit_of_measurement=UnitOfDataRate.BYTES_PER_SECOND,
         suggested_unit_of_measurement=UnitOfDataRate.MEGABYTES_PER_SECOND,
         suggested_display_precision=2, state_class=SensorStateClass.MEASUREMENT,
@@ -263,7 +260,6 @@ WAN_V6_SENSORS: Final[tuple[IkuaiSensorEntityDescription, ...]] = (
     IkuaiSensorEntityDescription(
         key="v6_download_speed", name="IPv6 Download Speed", translation_key="wan_v6_download_speed",
         icon="mdi:download-network", device_class=SensorDeviceClass.DATA_RATE,
-        entity_registry_enabled_default=False,
         native_unit_of_measurement=UnitOfDataRate.BYTES_PER_SECOND,
         suggested_unit_of_measurement=UnitOfDataRate.MEGABYTES_PER_SECOND,
         suggested_display_precision=2, state_class=SensorStateClass.MEASUREMENT,
@@ -271,7 +267,6 @@ WAN_V6_SENSORS: Final[tuple[IkuaiSensorEntityDescription, ...]] = (
     IkuaiSensorEntityDescription(
         key="v6_total_up", name="IPv6 Total Upload", translation_key="wan_v6_total_up",
         icon="mdi:upload", device_class=SensorDeviceClass.DATA_SIZE,
-        entity_registry_enabled_default=False,
         native_unit_of_measurement=UnitOfInformation.BYTES,
         suggested_unit_of_measurement=UnitOfInformation.GIGABYTES,
         suggested_display_precision=2, state_class=SensorStateClass.TOTAL_INCREASING,
@@ -279,7 +274,6 @@ WAN_V6_SENSORS: Final[tuple[IkuaiSensorEntityDescription, ...]] = (
     IkuaiSensorEntityDescription(
         key="v6_total_down", name="IPv6 Total Download", translation_key="wan_v6_total_down",
         icon="mdi:download", device_class=SensorDeviceClass.DATA_SIZE,
-        entity_registry_enabled_default=False,
         native_unit_of_measurement=UnitOfInformation.BYTES,
         suggested_unit_of_measurement=UnitOfInformation.GIGABYTES,
         suggested_display_precision=2, state_class=SensorStateClass.TOTAL_INCREASING,
@@ -287,7 +281,6 @@ WAN_V6_SENSORS: Final[tuple[IkuaiSensorEntityDescription, ...]] = (
     IkuaiSensorEntityDescription(
         key="v6_conn", name="IPv6 Connection Count", translation_key="wan_v6_conn",
         icon="mdi:ip-network", state_class=SensorStateClass.MEASUREMENT,
-        entity_registry_enabled_default=False,
     ),
 )
 
@@ -297,7 +290,6 @@ WAN_BALANCE_SENSORS: Final[tuple[IkuaiSensorEntityDescription, ...]] = (
         key="balance_snapshot", name="WAN Load Balance Snapshot",
         translation_key="wan_balance_snapshot", icon="mdi:scale-balance",
         entity_category=EntityCategory.DIAGNOSTIC,
-        entity_registry_enabled_default=False,
         value_fn=lambda d: d.get("wan_balance", {}).get("_state"),
         attr_fn=lambda d: d.get("wan_balance", {}).get("lines", {}),
     ),
@@ -390,21 +382,49 @@ async def async_setup_entry(
 
     # 处理【接口监控管理】子设备
     interfaces = coordinator.data.get("interfaces", {})
+
+    # 动态确定「重要接口」：首个 WAN（优先 wan 聚合父口，避免 adsl/vwan 排在前面）
+    # + 首个 LAN（名称以 lan 开头）。仅这些接口的流量传感器默认启用，其余默认禁用。
+    wan_ifaces = [k for k, v in interfaces.items() if v.get("is_wan_line")]
+    wan_parents = sorted(n for n in wan_ifaces if n.startswith("wan"))
+    first_wan = wan_parents[0] if wan_parents else (sorted(wan_ifaces)[0] if wan_ifaces else None)
+    lan_names = sorted(n for n in interfaces if n.startswith("lan"))
+    first_lan = lan_names[0] if lan_names else None
+    important_ifaces = {x for x in (first_wan, first_lan) if x}
+
+    # 首个开启 v6 的 WAN（与 WAN 逻辑一致：多个 v6 口只显示首个，其余禁用）
+    v6_wan_parents = sorted(
+        n for n in wan_ifaces if interfaces[n].get("has_v6") and n.startswith("wan")
+    )
+    v6_wan_any = sorted(n for n in wan_ifaces if interfaces[n].get("has_v6"))
+    first_v6_wan = (
+        v6_wan_parents[0]
+        if v6_wan_parents
+        else (v6_wan_any[0] if v6_wan_any else None)
+    )
+
+    # 接口流量传感器：仅「重要接口」默认启用，其余默认禁用
     for iface_name, iface_data in interfaces.items():
         for description in INTERFACE_SENSORS:
-            entities.append(IkuaiIfaceSensor(coordinator, description, iface_name))
+            desc = description
+            if iface_name not in important_ifaces:
+                desc = replace(description, entity_registry_enabled_default=False)
+            entities.append(IkuaiIfaceSensor(coordinator, desc, iface_name))
 
-    # 仅对 WAN 拨号线路（含聚合父口 wan* 与 adsl/vwan 子线路）生成，跳过 lan 等
-    wan_ifaces = [k for k, v in interfaces.items() if v.get("is_wan_line")]
+    # WAN 连接状态 / IPv4 地址（诊断类）：取消禁用，默认启用（每个 WAN 线路都生成）
     for iface_name in wan_ifaces:
         iface_data = interfaces[iface_name]
-        # WAN 连接状态 / IPv4 地址：每个 WAN 线路都生成（断线时仍有诊断价值）
         for description in WAN_STATUS_SENSORS:
             entities.append(IkuaiIfaceSensor(coordinator, description, iface_name))
+        # WAN IPv6 流量传感器：仅首个 v6 WAN 默认启用，其余默认禁用
         if iface_data.get("has_v6"):
             for description in WAN_V6_SENSORS:
-                entities.append(IkuaiIfaceSensor(coordinator, description, iface_name))
-    # 多 WAN 负载均衡快照（诊断实体）
+                desc = description
+                if iface_name != first_v6_wan:
+                    desc = replace(description, entity_registry_enabled_default=False)
+                entities.append(IkuaiIfaceSensor(coordinator, desc, iface_name))
+
+    # 多 WAN 负载均衡快照（诊断类）：取消禁用，默认启用
     for description in WAN_BALANCE_SENSORS:
         entities.append(IkuaiWanBalanceSensor(coordinator, description))
 
