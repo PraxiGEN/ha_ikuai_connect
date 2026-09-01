@@ -37,7 +37,7 @@
         "data": {
           "manage_action": "Terminal Tracking Management",
           "scan_interval": "Data Update Interval (seconds)",
-          "offline_grace_period": "Global Offline Grace Period (seconds)"
+          "offline_grace_period": "Global Offline Grace Period (minutes)"
         }
       },
       "scan": {
@@ -49,10 +49,10 @@
       },
       "configure_devices": {
         "title": "Configure Terminal Tracking Options",
-        "description": "Configuring **{device}**. Please set a display name and offline grace period.\nRemaining devices: {remaining}.\nTip: Mobile devices typically require ~600 seconds.",
+        "description": "Configuring **{device}**. Please set a display name and offline grace period.\nRemaining devices: {remaining}.\nTip: Mobile devices typically require ~10 minutes.",
         "data": {
           "name": "Display Name",
-          "offline_grace_period": "Offline Grace Period (30–3600 seconds)"
+          "offline_grace_period": "Offline Grace Period (minutes)"
         }
       },
       "remove": {

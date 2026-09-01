@@ -164,7 +164,8 @@ class IkuaiCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             # --- 终端映射 (Clients) ---
             now = time.time()
             tracker_config = self.config_entry.options.get(CONF_TRACKER_CONFIG, {})
-            grace_seconds = self.config_entry.options.get(CONF_OFFLINE_GRACE_PERIOD, DEFAULT_OFFLINE_GRACE_PERIOD)            
+            # 全局离线判定缓冲时间（分钟），比较时统一转秒
+            grace_minutes = self.config_entry.options.get(CONF_OFFLINE_GRACE_PERIOD, DEFAULT_OFFLINE_GRACE_PERIOD)
             # 拿到 API 当前实时在线的列表
             api_online_map = {}
             if isinstance(clients_res, dict):
@@ -192,7 +193,8 @@ class IkuaiCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 else:
                     last_seen_ts = self._last_seen.get(mac_lower, 0)
                     elapsed = now - last_seen_ts
-                    dev_grace = device_conf.get("buffer", grace_seconds)
+                    # per-device buffer 覆盖全局值；两者均以分钟为单位，×60 转秒
+                    dev_grace = device_conf.get("buffer", grace_minutes) * 60
                     
                     if elapsed < dev_grace:
                         # 沿用缓存数据，如果没有则创建一个带基本名称的字典
