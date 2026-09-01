@@ -229,7 +229,7 @@ class IkuaiOptionsFlowHandler(config_entries.OptionsFlow):
     async def async_step_scan(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """从路由器扫描当前在线终端."""
+        """从路由器扫描当前在线终端与近期离线终端."""
         errors: dict[str, str] = {}
         coordinator = self.config_entry.runtime_data
 
@@ -240,29 +240,44 @@ class IkuaiOptionsFlowHandler(config_entries.OptionsFlow):
             else:
                 return await self.async_step_configure_devices()
 
+        def _build_label(item: dict[str, Any]) -> str:
+            mac = normalize_mac(item.get("mac", ""))
+            ip = item.get("ip_addr", "")
+            # 优先级逻辑：终端名 > 型号 > 备注
+            termname = item.get("termname", "")
+            model = item.get("client_model", "")
+            comment = extract_name_from_label(item.get("comment", ""))
+            name_priority = termname or model or comment
+            return (
+                f"{mac} | {ip} ({name_priority})" if name_priority else f"{mac} | {ip}"
+            )
+
         try:
-            res = await coordinator.api.get_lan_devices()
-            lan_list = res.get("data", [])
+            # 1) 在线终端（必选源，失败直接报错）
+            online_res = await coordinator.api.get_lan_devices()
+            online_list = online_res.get("data", [])
+
+            # 2) 近期离线终端（补充源，失败不阻断扫描，仅回退到在线列表）
+            offline_list: list[dict[str, Any]] = []
+            try:
+                offline_res = await coordinator.api.get_offline_history(limit=200)
+                offline_list = offline_res.get("offline_data", [])
+            except Exception as err:  # pylint: disable=broad-except
+                LOGGER.warning("离线终端扫描失败，仅使用在线列表: %s", err)
+
             # 过滤掉已经在追踪列表中的设备
             existing_trackers = self._temp_options.get(CONF_TRACKER_CONFIG, {})
-
             self._discovered_map = {}
-            for item in lan_list:
+
+            # 离线先入，在线后入覆盖（在线记录含实时 IP，优先级更高）
+            for item in offline_list:
                 mac = normalize_mac(item.get("mac", ""))
-                if not mac or mac in existing_trackers:
-                    continue
-
-                ip = item.get("ip_addr", "")
-                # 优先级逻辑：终端名 > 型号 > 备注
-                termname = item.get("termname", "")
-                model = item.get("client_model", "")
-                comment = extract_name_from_label(item.get("comment", ""))
-                name_priority = termname or model or comment
-
-                label = (
-                    f"{mac} | {ip} ({name_priority})" if name_priority else f"{mac} | {ip}"
-                )
-                self._discovered_map[mac] = label
+                if mac and mac not in existing_trackers:
+                    self._discovered_map[mac] = _build_label(item)
+            for item in online_list:
+                mac = normalize_mac(item.get("mac", ""))
+                if mac and mac not in existing_trackers:
+                    self._discovered_map[mac] = _build_label(item)
 
             if not self._discovered_map:
                 errors["base"] = "no_new_devices_found"
