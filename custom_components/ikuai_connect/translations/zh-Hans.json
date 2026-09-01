@@ -37,7 +37,7 @@
         "data": {
           "manage_action": "终端追踪管理",
           "scan_interval": "数据更新间隔 (秒)",
-          "offline_grace_period": "全局离线判定缓冲时间 (秒)"
+          "offline_grace_period": "全局离线判定缓冲时间 (分钟)"
         }
       },
       "scan": {
@@ -49,10 +49,10 @@
       },
       "configure_devices": {
         "title": "配置终端追踪选项",
-        "description": "正在配置 **{device}**，请为选中的终端设置显示名称和离线缓冲时间。\n 剩余待配置设备: {remaining} 个。\n 注：手机判定时间建议设置 600 秒。",
+        "description": "正在配置 **{device}**，请为选中的终端设置显示名称和离线缓冲时间。\n 剩余待配置设备: {remaining} 个。\n 注：手机判定时间建议设置 10 分钟。",
         "data": {
           "name": "显示名称",
-          "offline_grace_period": "离线判定延迟时间 (30-3600秒)"
+          "offline_grace_period": "离线判定延迟时间 (分钟)"
         }
       },
       "remove": {
