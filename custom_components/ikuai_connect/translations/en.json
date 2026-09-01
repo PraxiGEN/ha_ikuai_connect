@@ -42,9 +42,9 @@
       },
       "scan": {
         "title": "Select Terminals to Track",
-        "description": "Please select the online terminals you want Home Assistant to track.",
+        "description": "Please select the terminals you want Home Assistant to track. The list includes both currently online and recently offline devices; a tracked offline device shows as not_home until it reconnects.",
         "data": {
-          "devices": "Online Terminal List"
+          "devices": "Terminal List (Online + Offline)"
         }
       },
       "configure_devices": {
