@@ -298,15 +298,16 @@ class IkuaiAPI:
         endpoint = f"/api/v4.0/monitoring/clients/protocols?mac={mac}&ip={ip}"
         return await self._make_request("GET", endpoint)
 
-    async def get_offline_history(self) -> dict[str, Any]:
+    async def get_offline_history(self, limit: int = 20) -> dict[str, Any]:
         """
         获取终端离线统计历史 (/api/v4.0/monitoring/clients-offline)
         用于集成服务：ikuai_connect.get_offline_history
+        limit 控制返回条数，选项流扫描离线设备时可调大以覆盖更多历史终端。
         """
-        # 使用下线时间降序排列，取最近 20 条记录
-        params = "limit=20&order=desc&order_by=logout_time&page=1"
+        # 使用下线时间降序排列，取最近 limit 条记录
+        params = f"limit={limit}&order=desc&order_by=logout_time&page=1"
         endpoint = f"/api/v4.0/monitoring/clients-offline?{params}"
-        
+
         return await self._make_request("GET", endpoint)
 
     # --- 执行动作 (Control Actions) ---
