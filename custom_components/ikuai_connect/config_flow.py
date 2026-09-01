@@ -212,7 +212,7 @@ class IkuaiOptionsFlowHandler(config_entries.OptionsFlow):
                         CONF_OFFLINE_GRACE_PERIOD, default=current_period
                     ): NumberSelector(
                         NumberSelectorConfig(
-                            min=30, max=3600, step=10, mode=NumberSelectorMode.BOX
+                            min=1, max=60, step=1, mode=NumberSelectorMode.BOX
                         )
                     ),
                     vol.Required("manage_action", default="none"): SelectSelector(
@@ -339,10 +339,10 @@ class IkuaiOptionsFlowHandler(config_entries.OptionsFlow):
                 {
                     vol.Required(CONF_NAME, default=default_name): str,
                     vol.Required(
-                        CONF_OFFLINE_GRACE_PERIOD, default=600
+                        CONF_OFFLINE_GRACE_PERIOD, default=10
                     ): NumberSelector(
                         NumberSelectorConfig(
-                            min=30, max=3600, unit_of_measurement="s", mode=NumberSelectorMode.BOX
+                            min=1, max=60, unit_of_measurement="min", mode=NumberSelectorMode.BOX
                         )
                     ),
                 }
