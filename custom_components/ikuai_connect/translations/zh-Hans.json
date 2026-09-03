@@ -83,13 +83,20 @@
       "memory_usage": {
         "name": "内存使用率",
         "state_attributes": {
-          "memory_detail": { "name": "内存详情" }
+          "total": { "name": "总内存" },
+          "available": { "name": "可用内存" },
+          "free": { "name": "空闲内存" },
+          "cached": { "name": "缓存占用" },
+          "buffers": { "name": "缓冲区占用" }
         }
       },
       "online_users": {
         "name": "在线设备总数",
         "state_attributes": {
-          "online_user_detail": { "name": "在线设备详情" }
+          "count_wired": { "name": "有线终端" },
+          "count_2g": { "name": "2.4G 无线终端" },
+          "count_5g": { "name": "5G 无线终端" },
+          "count_wireless": { "name": "无线终端合计" }
         }
       },
       "connection_count": {
@@ -132,7 +139,17 @@
       "ap_online": { 
         "name": "在线 AP 数量", 
         "state_attributes": {
-          "wireless_detail": { "name": "无线详情" }
+          "total_ap": { "name": "AP 总数" },
+          "offline_ap": { "name": "离线 AP 数" },
+          "roaming_supported": { "name": "支持漫游的 AP 数" },
+          "prefer_5g_aps": { "name": "优先 5G 的 AP 数" },
+          "clients_2g": { "name": "2.4G 终端数" },
+          "clients_5g": { "name": "5G 终端数" },
+          "active_clients": { "name": "活跃终端数" },
+          "signal_coverage": { "name": "信号覆盖率" },
+          "network_delay": { "name": "网络延迟" },
+          "packet_loss": { "name": "丢包率" },
+          "airtime_health_score": { "name": "信道健康度评分" }
         }
       },
       "upload_speed": { "name": "{iface} 实时上传速度" },
@@ -169,7 +186,12 @@
       "upgrade_status": { 
         "name": "固件更新状态",
         "state_attributes": {
-          "upgrade_detail": { "name": "更新详情" }
+          "current_version": { "name": "当前版本" },
+          "latest_version": { "name": "最新版本" },
+          "version_type": { "name": "版本类型" },
+          "build_date": { "name": "编译日期" },
+          "update_content": { "name": "更新内容" },
+          "last_check": { "name": "最后检查时间" }
         }
       },
       "firmware_version": {
@@ -186,7 +208,9 @@
       "latest_backup": { 
         "name": "最后备份文件", 
         "state_attributes": {
-          "detail": { "name": "备份详情" }
+          "backtype": { "name": "备份类型" },
+          "filesize": { "name": "文件大小" },
+          "version": { "name": "备份版本" }
         }
       },      
       "disk_total_capacity": { 
