@@ -83,13 +83,20 @@
       "memory_usage": {
         "name": "Memory Usage",
         "state_attributes": {
-          "memory_detail": { "name": "Memory Details" }
+          "total": { "name": "Total Memory" },
+          "available": { "name": "Available Memory" },
+          "free": { "name": "Free Memory" },
+          "cached": { "name": "Cached" },
+          "buffers": { "name": "Buffers" }
         }
       },
       "online_users": {
         "name": "Total Online Devices",
         "state_attributes": {
-          "online_user_detail": { "name": "Online Device Details" }
+          "count_wired": { "name": "Wired Devices" },
+          "count_2g": { "name": "2.4G Wireless" },
+          "count_5g": { "name": "5G Wireless" },
+          "count_wireless": { "name": "Wireless Total" }
         }
       },
       "connection_count": {
@@ -132,7 +139,17 @@
       "ap_online": {
         "name": "Online AP Count",
         "state_attributes": {
-          "wireless_detail": { "name": "Wireless Details" }
+          "total_ap": { "name": "Total APs" },
+          "offline_ap": { "name": "Offline APs" },
+          "roaming_supported": { "name": "Roaming-capable APs" },
+          "prefer_5g_aps": { "name": "5G-preferred APs" },
+          "clients_2g": { "name": "2.4G Clients" },
+          "clients_5g": { "name": "5G Clients" },
+          "active_clients": { "name": "Active Clients" },
+          "signal_coverage": { "name": "Signal Coverage" },
+          "network_delay": { "name": "Network Delay" },
+          "packet_loss": { "name": "Packet Loss" },
+          "airtime_health_score": { "name": "Airtime Health Score" }
         }
       },
       "upload_speed": { "name": "{iface} Upload Speed" },
@@ -169,7 +186,12 @@
       "upgrade_status": {
         "name": "Firmware Upgrade Status",
         "state_attributes": {
-          "upgrade_detail": { "name": "Upgrade Details" }
+          "current_version": { "name": "Current Version" },
+          "latest_version": { "name": "Latest Version" },
+          "version_type": { "name": "Version Type" },
+          "build_date": { "name": "Build Date" },
+          "update_content": { "name": "Update Content" },
+          "last_check": { "name": "Last Check" }
         }
       },
       "firmware_version": {
@@ -186,7 +208,9 @@
       "latest_backup": {
         "name": "Latest Backup File",
         "state_attributes": {
-          "detail": { "name": "Backup Details" }
+          "backtype": { "name": "Backup Type" },
+          "filesize": { "name": "File Size" },
+          "version": { "name": "Backup Version" }
         }
       },
       "disk_total_capacity": {
