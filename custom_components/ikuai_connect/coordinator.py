@@ -16,6 +16,24 @@ from .const import (
     DEFAULT_OFFLINE_GRACE_PERIOD,
 )
 
+def _kb_to_mb(value: Any) -> float | None:
+    """(单位 KB) 转换为 MB (保留 1 位小数)."""
+    if value is None:
+        return None
+    try:
+        return round(float(value) / 1024, 2)
+    except (TypeError, ValueError):
+        return None
+
+def _bytes_to_gb(value: Any) -> float | None:
+    """(Bytes) 转换为 GB (十进制, 1 GB = 10^9 字节, 保留 2 位小数)."""
+    if value is None:
+        return None
+    try:
+        return round(float(value) / 1_000_000_000, 2)
+    except (TypeError, ValueError):
+        return None
+
 class IkuaiCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     """处理 OpenAPI 数据清洗."""
 
@@ -114,14 +132,24 @@ class IkuaiCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             processed_sys = {
                 "cpu_load": float(sysinfo.get("cpu", ["0%"])[0].replace("%", "")),
                 "memory_usage": float(mem.get("used", "0%").replace("%", "")),
-                "memory_detail": {k: v for k, v in mem.items() if k != "used"},
+                # 内存字段 API 返回单位为 KB，统一转换为 MB
+                "memory_detail": {
+                    k: _kb_to_mb(mem.get(k))
+                    for k in ("total", "available", "free", "cached", "buffers")
+                },
                 "uptime": int(sysinfo.get("uptime", 0)),
                 "temperature": float(sysinfo.get("cputemp", [0])[0]) if sysinfo.get("cputemp") else 0.0,
                 "ver_string": ver_string,
                 "verinfo": verinfo,
                 "wan_ip_v4": wan_v4_ip,
                 "online_users": int(users.get("count", 0)),
-                "online_user_detail": {k: v for k, v in users.items() if k != "count"},
+                "online_user_detail": {
+                    # 爱快实际字段为 count_wired/count_2g/count_5g/count_wireless
+                    "count_wired": users.get("count_wired"),
+                    "count_2g": users.get("count_2g"),
+                    "count_5g": users.get("count_5g"),
+                    "count_wireless": users.get("count_wireless"),
+                },
                 "connection_count": int(stream.get("connect_num", 0)),
                 "connect_detail": {
                     "tcp": stream.get("tcp_connect_num"), "udp": stream.get("udp_connect_num"), 
@@ -130,8 +158,12 @@ class IkuaiCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 "upload": int(stream.get("upload", 0)), "download": int(stream.get("download", 0)),
                 "total_up": int(stream.get("total_up", 0)), "total_down": int(stream.get("total_down", 0)),
                 "v6_stats": {
-                    "upload_speed_v6": v6_total["up"], "download_speed_v6": v6_total["down"], 
-                    "total_upload_v6": v6_total["t_up"], "total_download_v6": v6_total["t_down"]
+                    # 实时速率接口 (interfaces-traffic-v6) 返回单位为 B/s，须经 B→KB→MB 两次 ÷1024 换算为 MB/s（复用 _kb_to_mb）
+                    "upload_speed_v6": _kb_to_mb(_kb_to_mb(v6_total["up"])),
+                    "download_speed_v6": _kb_to_mb(_kb_to_mb(v6_total["down"])),
+                    # 累计流量接口返回单位为 Bytes，统一换算为 GB
+                    "total_upload_v6": _bytes_to_gb(v6_total["t_up"]),
+                    "total_download_v6": _bytes_to_gb(v6_total["t_down"]),
                 }
             }
 
