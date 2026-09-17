@@ -48,25 +48,40 @@ jobs:
 
           # === Messages (bilingual) / 消息（双语）===
           stale-issue-message: |
-            ## ⏳ Stale Issue Notice / 过时问题通知
+            ## ⏳ This issue is now stale
           
-            This issue has been inactive for **15 days** and is now marked as **stale**.    
-            该问题已 **15 天无活动**，现已被标记为 **过期**。  
-              
-            **If this issue is still relevant, please leave a comment to keep it open.**    
-            **如果此问题仍然相关，请留言以保持开启状态。**  
-              
-            It will be automatically closed in **5 days** if no further activity occurs.    
-            若无进一步活动，将在 **5 天后自动关闭**。
-
-            close-issue-message: |
-              ## ⏳ Issue Closed Due to Inactivity / 由于长时间未操作，问题已关闭
-            
-              This issue was closed after being marked as **stale** and remaining inactive.  
-              该问题在被标记为 **过期** 后因持续无活动而被关闭。
-            
-              **If you believe this issue was closed in error, please reopen it with a comment.**  
-              **如果您认为这是错误关闭的，请留言并重新打开。**
+            > **15 days** without activity · labelled `stale`
+          
+            This issue will be **automatically closed in 5 days** if nothing happens.
+          
+            🙋 **Still relevant?** Just leave a comment — the `stale` label will be removed automatically.
+          
+            ---
+          
+            <details>
+            <summary>🌐 中文说明</summary>
+          
+            该问题已 **15 天无活动**，被标记为 `stale`；若无进一步活动，将在 **5 天后自动关闭**。
+            如果问题仍然存在，请留言，系统会自动移除过期标签。
+          
+            </details>
+          
+          close-issue-message: |
+            ## 🔒 Closed due to inactivity
+          
+            > Marked `stale` for **5 days** with no further activity.
+          
+            If this still affects you, **reopen it with a comment** — no need to file a duplicate issue.
+          
+            ---
+          
+            <details>
+            <summary>🌐 中文说明</summary>
+          
+            该问题在标记 `stale` **5 天**后仍无活动，已自动关闭。
+            如问题仍存在，请留言并重新打开，无需重复提交。
+          
+            </details>
 
           # === Behavior / 行为设置 ===
           # Remove the stale label when the issue is updated
