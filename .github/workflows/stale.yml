@@ -40,30 +40,33 @@ jobs:
           # === Exempt labels / 豁免标签 ===
           # Issues with any of these labels will not be processed
           # 带有以下标签的问题不会被处理
-          exempt-issue-labels: >-
-            pinned,security,enhancement,good first issue,help wanted,wontfix
+          exempt-issue-labels: bug
 
           # === Labels to apply / 要添加的标签 ===
           stale-issue-label: stale
           close-issue-label: stale-closed
 
           # === Messages (bilingual) / 消息（双语）===
-          stale-issue-message: >-
-            This issue has been inactive for 15 days and is being marked as stale.
-            该问题已 15 天无活动，正在标记为过期。
+          stale-issue-message: |
+            ## ⏳ Stale Issue Notice / 过时问题通知
+          
+            This issue has been inactive for **15 days** and is now marked as **stale**.    
+            该问题已 **15 天无活动**，现已被标记为 **过期**。  
+              
+            **If this issue is still relevant, please leave a comment to keep it open.**    
+            **如果此问题仍然相关，请留言以保持开启状态。**  
+              
+            It will be automatically closed in **5 days** if no further activity occurs.    
+            若无进一步活动，将在 **5 天后自动关闭**。
 
-            If this issue is still relevant, please leave a comment to keep it open.
-            如果此问题仍然相关，请留言以保持其开启状态。
-
-            Otherwise, it will be closed in 5 days.
-            否则，将在 5 天后自动关闭。
-
-          close-issue-message: >-
-            This issue was closed due to prolonged inactivity after being marked stale.
-            该问题在标记为过期后因持续无活动而被关闭。
-
-            If you believe this was closed in error, please reopen it with a comment.
-            如果您认为这是错误关闭的，请留言并重新打开。
+            close-issue-message: |
+              ## ⏳ Issue Closed Due to Inactivity / 由于长时间未操作，问题已关闭
+            
+              This issue was closed after being marked as **stale** and remaining inactive.  
+              该问题在被标记为 **过期** 后因持续无活动而被关闭。
+            
+              **If you believe this issue was closed in error, please reopen it with a comment.**  
+              **如果您认为这是错误关闭的，请留言并重新打开。**
 
           # === Behavior / 行为设置 ===
           # Remove the stale label when the issue is updated
