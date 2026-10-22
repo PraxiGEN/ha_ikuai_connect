@@ -92,6 +92,7 @@ call_api_service:
             - GET
             - POST
             - PUT
+            - PATCH
             - DELETE
     params:
       required: false
