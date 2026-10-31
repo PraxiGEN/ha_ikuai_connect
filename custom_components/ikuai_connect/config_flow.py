@@ -279,15 +279,17 @@ class IkuaiOptionsFlowHandler(config_entries.OptionsFlow):
             existing_trackers = self._temp_options.get(CONF_TRACKER_CONFIG, {})
             self._discovered_map = {}
 
-            # 离线先入，在线后入覆盖（在线记录含实时 IP，优先级更高）
-            for item in offline_list:
-                mac = normalize_mac(item.get("mac", ""))
-                if mac and mac not in existing_trackers:
-                    self._discovered_map[mac] = _build_label(item)
+            # 在线优先：先入在线终端（含实时 IP 与流量），近期离线终端作为补充追加在后。
+            # 同一 MAC 两者都有时保留在线记录（离线记录的 IP 可能已过期），用 setdefault 保证不覆盖。
+            # 注意：离线终端必须保留（#33 明确要求可添加当下不在线的设备），此处只调顺序、不改可选项集合。
             for item in online_list:
                 mac = normalize_mac(item.get("mac", ""))
                 if mac and mac not in existing_trackers:
                     self._discovered_map[mac] = _build_label(item)
+            for item in offline_list:
+                mac = normalize_mac(item.get("mac", ""))
+                if mac and mac not in existing_trackers:
+                    self._discovered_map.setdefault(mac, _build_label(item))
 
             if not self._discovered_map:
                 errors["base"] = "no_new_devices_found"
