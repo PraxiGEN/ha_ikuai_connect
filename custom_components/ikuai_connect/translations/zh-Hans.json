@@ -65,7 +65,8 @@
     },
     "error": {
       "no_devices_selected": "您没有选择任何设备。",
-      "no_new_devices_found": "未发现未添加的新在线终端。"
+      "no_new_devices_found": "未发现未添加的新在线终端。",
+      "cannot_connect": "无法连接到路由器，请检查地址与 Token。"
     }
   },
   "selector": {
@@ -444,7 +445,7 @@
         },
         "method": {
           "name": "请求方法",
-          "description": "HTTP 请求方法（下拉选择）。GET 用于获取数据，参数拼接到 URL 查询串；POST/PUT/DELETE 用于提交数据或执行操作，参数作为请求体发送。默认 GET。"
+          "description": "HTTP 请求方法（下拉选择）。GET 用于获取数据，参数拼接到 URL 查询串；POST/PUT/PATCH/DELETE 用于提交数据或执行操作，参数作为请求体发送。默认 GET。"
         },
         "params": {
           "name": "请求参数 (JSON)",
