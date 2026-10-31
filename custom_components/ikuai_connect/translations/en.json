@@ -65,7 +65,8 @@
     },
     "error": {
       "no_devices_selected": "You did not select any devices.",
-      "no_new_devices_found": "No new online terminals were found."
+      "no_new_devices_found": "No new online terminals were found.",
+      "cannot_connect": "Failed to connect to the router, please check the host and token."
     }
   },
   "selector": {
@@ -444,7 +445,7 @@
         },
         "method": {
           "name": "HTTP Method",
-          "description": "HTTP request method (dropdown). GET fetches data with params appended to the URL query string; POST/PUT/DELETE submit data or perform actions with params sent as the request body. Defaults to GET."
+          "description": "HTTP request method (dropdown). GET fetches data with params appended to the URL query string; POST/PUT/PATCH/DELETE submit data or perform actions with params sent as the request body. Defaults to GET."
         },
         "params": {
           "name": "Request Params (JSON)",

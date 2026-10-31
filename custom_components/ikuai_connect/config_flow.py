@@ -231,7 +231,15 @@ class IkuaiOptionsFlowHandler(config_entries.OptionsFlow):
     ) -> FlowResult:
         """从路由器扫描当前在线终端与近期离线终端."""
         errors: dict[str, str] = {}
-        coordinator = self.config_entry.runtime_data
+
+        # IkuaiAPI（与 async_step_user、async_step_reconfigure 的取源方式一致）。
+        coordinator = getattr(self.config_entry, "runtime_data", None)
+        api: IkuaiAPI | None = getattr(coordinator, "api", None)
+        if api is None:
+            host = self.config_entry.data.get(CONF_HOST)
+            token = self.config_entry.data.get(CONF_TOKEN)
+            if host and token:
+                api = IkuaiAPI(self.hass, host, token)
 
         if user_input is not None:
             self._selected_devices = user_input.get("devices", [])
@@ -253,14 +261,16 @@ class IkuaiOptionsFlowHandler(config_entries.OptionsFlow):
             )
 
         try:
+            if api is None:
+                raise RuntimeError("集成尚未完成加载，且无法从配置条目读取凭据")
             # 1) 在线终端（必选源，失败直接报错）
-            online_res = await coordinator.api.get_lan_devices()
+            online_res = await api.get_lan_devices()
             online_list = online_res.get("data", [])
 
             # 2) 近期离线终端（补充源，失败不阻断扫描，仅回退到在线列表）
             offline_list: list[dict[str, Any]] = []
             try:
-                offline_res = await coordinator.api.get_offline_history(limit=200)
+                offline_res = await api.get_offline_history(limit=200)
                 offline_list = offline_res.get("offline_data", [])
             except Exception as err:  # pylint: disable=broad-except
                 LOGGER.warning("离线终端扫描失败，仅使用在线列表: %s", err)
