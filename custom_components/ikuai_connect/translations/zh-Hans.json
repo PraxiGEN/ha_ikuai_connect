@@ -57,7 +57,7 @@
       },
       "remove": {
         "title": "移除追踪终端",
-        "description": "勾选您不再需要追踪的设备，对应的实体将被移除。",
+        "description": "勾选您不再需要追踪的设备。对应实体将被禁用（不删除），可随时在实体注册表中重新启用。",
         "data": {
           "devices_to_remove": "已追踪终端列表"
         }
@@ -67,6 +67,9 @@
       "no_devices_selected": "您没有选择任何设备。",
       "no_new_devices_found": "未发现未添加的新在线终端。",
       "cannot_connect": "无法连接到路由器，请检查地址与 Token。"
+    },
+    "abort": {
+      "no_tracked_devices": "当前没有正在追踪的终端。"
     }
   },
   "selector": {
