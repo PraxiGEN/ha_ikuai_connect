@@ -57,7 +57,7 @@
       },
       "remove": {
         "title": "Remove Tracked Terminals",
-        "description": "Select the terminals you no longer want to track. Their entities will be removed.",
+        "description": "Select terminals you no longer want to track. Their entities will be disabled (not deleted), and can be re-enabled from the entity registry at any time.",
         "data": {
           "devices_to_remove": "Tracked Terminal List"
         }
@@ -67,6 +67,9 @@
       "no_devices_selected": "You did not select any devices.",
       "no_new_devices_found": "No new online terminals were found.",
       "cannot_connect": "Failed to connect to the router, please check the host and token."
+    },
+    "abort": {
+      "no_tracked_devices": "No terminals are currently tracked."
     }
   },
   "selector": {
