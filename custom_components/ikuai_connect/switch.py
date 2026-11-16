@@ -25,41 +25,46 @@ async def async_setup_entry(
 
     @callback
     def _async_manage_entities() -> None:
-        """动态管理实体的回调函数：增量添加与物理删除."""
-        # 从安全数据块获取规则
-        security_data = coordinator.data.get("security", {})
+        """动态管理实体：增量添加，孤儿实体降级为禁用."""
+        security_data = coordinator.data.get("security", {}) if coordinator.data else {}
         rules_data = security_data.get("mac_rules", {})
         ent_reg = er.async_get(hass)
         new_entities = []
-        # 增量添加逻辑
         for rid in rules_data:
-            # 统一使用 gwid 构造 UID
             uid = f"{coordinator.gwid}_sec_macrule_{rid}"
             if uid not in added_unique_ids:
-                # 直接创建对象，并将生成的 uid 传入类中
                 new_entities.append(IkuaiMacRuleSwitch(coordinator, rid, uid))
                 added_unique_ids.add(uid)
-        
+
         if new_entities:
             async_add_entities(new_entities)
 
-        # 获取当前集成实例名下的所有实体记录
-        entity_entries = er.async_entries_for_config_entry(ent_reg, entry.entry_id)
-        # 计算当前 API 返回的所有合法 UID 集合
-        current_valid_uids = {f"{coordinator.gwid}_sec_macrule_{rid}" for rid in rules_data}
-        
-        for entity in entity_entries:
-            # 只处理本平台(switch)且符合特定格式的实体
-            if entity.domain == "switch" and "_sec_macrule_" in entity.unique_id:
-                if entity.unique_id not in current_valid_uids:
-                    LOGGER.info("注销已移除的 MAC 规则实体: %s", entity.entity_id)
-                    ent_reg.async_remove(entity.entity_id)
-                    if entity.unique_id in added_unique_ids:
-                        added_unique_ids.remove(entity.unique_id)
+        # API 请求失败时 _safe() 会把结果降级为空 dict，此时不能当作「规则被删了」
+        if not rules_data:
+            LOGGER.debug("MAC 规则数据为空（可能为 API 失败），跳过孤立实体清理")
+            return
 
-    # 初次加载执行一次管理
+        current_valid_uids = {f"{coordinator.gwid}_sec_macrule_{rid}" for rid in rules_data}
+        for entity in er.async_entries_for_config_entry(ent_reg, entry.entry_id):
+            if entity.domain != "switch" or "_sec_macrule_" not in entity.unique_id:
+                continue
+            # 已被用户手动禁用的，尊重用户选择，不做任何处理
+            if entity.disabled_by not in (None, er.RegistryEntryDisabler.INTEGRATION):
+                continue
+            if entity.unique_id in current_valid_uids:
+                # 规则回到路由器上了：撤销此前的自动禁用
+                if entity.disabled_by == er.RegistryEntryDisabler.INTEGRATION:
+                    ent_reg.async_update_entity(entity.entity_id, disabled_by=None)
+                continue
+            LOGGER.warning(
+                "MAC 规则实体 %s 已不在路由器上，改为禁用（不删除，可随时恢复）", entity.entity_id
+            )
+            ent_reg.async_update_entity(
+                entity.entity_id, disabled_by=er.RegistryEntryDisabler.INTEGRATION
+            )
+            added_unique_ids.discard(entity.unique_id)
+
     _async_manage_entities()
-    # 绑定监听：每当协调器数据更新时，触发动态管理
     entry.async_on_unload(coordinator.async_add_listener(_async_manage_entities))
 
 class IkuaiMacRuleSwitch(CoordinatorEntity[IkuaiCoordinator], SwitchEntity):
