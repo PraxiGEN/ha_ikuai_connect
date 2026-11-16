@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+from copy import deepcopy
 from typing import Any
 
 import voluptuous as vol
@@ -159,28 +160,33 @@ class IkuaiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """获取选项流处理器."""
         return IkuaiOptionsFlowHandler()
 
-class IkuaiOptionsFlowHandler(config_entries.OptionsFlow):
+class IkuaiOptionsFlowHandler(config_entries.OptionsFlowWithReload):
     """处理集成选项、终端追踪及高级参数."""
 
     def __init__(self) -> None:
         """Initialize."""
         self._selected_devices: list[str] = []
         self._discovered_map: dict[str, str] = {}
-        self._temp_options: dict[str, Any] = {}
+        self._temp_options: dict[str, Any] | None = None
+
+    @property
+    def _options(self) -> dict[str, Any]:
+        """返回本次流的工作副本（首个步骤进入时已初始化）."""
+        assert self._temp_options is not None
+        return self._temp_options
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """配置主菜单."""
-        # 确保整个生命周期内 _temp_options 始终包含完整的当前配置
-        if not self._temp_options:
-            self._temp_options = dict(self.config_entry.options)
+        # 深拷贝：entry.options 顶层虽只读，嵌套 dict 仍共享引用，就地写会污染 entry
+        if self._temp_options is None:
+            self._temp_options = deepcopy(dict(self.config_entry.options))
 
         if user_input is not None:
             next_action = user_input.get("manage_action", "none")
 
-            # 合并基础设置到缓存中
-            self._temp_options.update(
+            self._options.update(
                 {
                     CONF_SCAN_INTERVAL: user_input[CONF_SCAN_INTERVAL],
                     CONF_OFFLINE_GRACE_PERIOD: user_input[CONF_OFFLINE_GRACE_PERIOD],
@@ -192,7 +198,7 @@ class IkuaiOptionsFlowHandler(config_entries.OptionsFlow):
             if next_action == "remove":
                 return await self.async_step_remove()
 
-            return self.async_create_entry(title="", data=self._temp_options)
+            return self.async_create_entry(title="", data=self._options)
 
         current_interval = self.config_entry.options.get(
             CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL
@@ -276,7 +282,10 @@ class IkuaiOptionsFlowHandler(config_entries.OptionsFlow):
                 LOGGER.warning("离线终端扫描失败，仅使用在线列表: %s", err)
 
             # 过滤掉已经在追踪列表中的设备
-            existing_trackers = self._temp_options.get(CONF_TRACKER_CONFIG, {})
+            existing_trackers = {
+                normalize_mac(mac)
+                for mac in self._options.get(CONF_TRACKER_CONFIG, {})
+            }
             self._discovered_map = {}
 
             # 在线优先：先入在线终端（含实时 IP 与流量），近期离线终端作为补充追加在后。
@@ -322,17 +331,17 @@ class IkuaiOptionsFlowHandler(config_entries.OptionsFlow):
         """循环迭代配置每一个选中的设备."""
         if not self._selected_devices:
             # 所有设备配完，保存
-            return self.async_create_entry(title="", data=self._temp_options)
+            return self.async_create_entry(title="", data=self._options)
 
         current_mac = self._selected_devices[0]
 
         if user_input is not None:
-            tracker_config = self._temp_options.setdefault(CONF_TRACKER_CONFIG, {})
+            tracker_config = self._options.setdefault(CONF_TRACKER_CONFIG, {})
             tracker_config[normalize_mac(current_mac)] = {
                 "name": user_input[CONF_NAME],
                 "buffer": user_input[CONF_OFFLINE_GRACE_PERIOD],
             }
-            self._temp_options[CONF_TRACKER_CONFIG] = tracker_config
+            self._options[CONF_TRACKER_CONFIG] = tracker_config
             self._selected_devices.pop(0)
             # 递归调用处理下一个设备，重置 user_input
             return await self.async_step_configure_devices(user_input=None)
@@ -369,13 +378,17 @@ class IkuaiOptionsFlowHandler(config_entries.OptionsFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """移除现有的追踪终端."""
-        tracker_config = dict(self._temp_options.get(CONF_TRACKER_CONFIG, {}))
+        tracker_config = deepcopy(self._options.get(CONF_TRACKER_CONFIG, {}))
+
+        # 空列表无法通过 SelectSelector 校验，直接回主菜单并提示
+        if not tracker_config and user_input is None:
+            return self.async_abort(reason="no_tracked_devices")
 
         if user_input is not None:
             for mac in user_input.get("devices_to_remove", []):
                 tracker_config.pop(mac, None)
-            self._temp_options[CONF_TRACKER_CONFIG] = tracker_config
-            return self.async_create_entry(title="", data=self._temp_options)
+            self._options[CONF_TRACKER_CONFIG] = tracker_config
+            return self.async_create_entry(title="", data=self._options)
 
         current_options = [
             {"value": mac, "label": f"{conf.get('name', mac)} ({mac})"}
