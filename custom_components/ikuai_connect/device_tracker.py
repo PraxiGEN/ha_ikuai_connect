@@ -19,19 +19,17 @@ async def async_setup_entry(
 ) -> None:
     """Set up iKuai trackers."""
     coordinator: IkuaiCoordinator = entry.runtime_data
-    # 记录当前已经在内存中运行的实体的 Unique ID
     added_unique_ids: set[str] = set()
 
     @callback
     def _async_manage_entities() -> None:
-        """动态管理追踪实体：增量添加与物理删除."""
+        """动态管理追踪实体：增量添加，孤儿实体降级为禁用."""
         tracker_config = entry.options.get(CONF_TRACKER_CONFIG) or entry.data.get(CONF_TRACKER_CONFIG, {})
         ent_reg = er.async_get(hass)
-        new_entities = []
+        # 注：此处不能提前 return——已禁用的实体仍需在 MAC 回到配置时被重新启用
         current_configured_uids = set()
-        # 增量添加逻辑
+        new_entities = []
         for mac, conf in tracker_config.items():
-            # 统一使用小写无冒号 MAC + gwid
             mac_clean = normalize_mac(mac).replace(":", "")
             uid = f"{coordinator.gwid}_track_{mac_clean}"
             current_configured_uids.add(uid)
@@ -43,19 +41,31 @@ async def async_setup_entry(
         if new_entities:
             async_add_entities(new_entities, True)
 
-        # 自动清理逻辑 (从 HA 注册表中彻底删除已取消勾选的设备)
-        entity_entries = er.async_entries_for_config_entry(ent_reg, entry.entry_id)
-        for entity in entity_entries:
-            if entity.domain == "device_tracker" and "_track_" in entity.unique_id:
-                if entity.unique_id not in current_configured_uids:
-                    LOGGER.info("正在彻底注销移除的追踪实体: %s", entity.entity_id)
-                    ent_reg.async_remove(entity.entity_id)
-                    if entity.unique_id in added_unique_ids:
-                        added_unique_ids.remove(entity.unique_id)
+        # 配置为空时无法区分「用户清空」与「读取失败」，一律不动注册表
+        if not current_configured_uids:
+            LOGGER.debug("追踪配置为空，跳过孤立实体清理")
+            return
 
-    # 初次加载执行
+        for entity in er.async_entries_for_config_entry(ent_reg, entry.entry_id):
+            if entity.domain != "device_tracker" or "_track_" not in entity.unique_id:
+                continue
+            # 已被用户手动禁用/删除的，尊重用户选择，不做任何处理
+            if entity.disabled_by not in (None, er.RegistryEntryDisabler.INTEGRATION):
+                continue
+            if entity.unique_id in current_configured_uids:
+                # 重新出现在配置中：撤销此前的自动禁用
+                if entity.disabled_by == er.RegistryEntryDisabler.INTEGRATION:
+                    ent_reg.async_update_entity(entity.entity_id, disabled_by=None)
+                continue
+            LOGGER.warning(
+                "追踪实体 %s 已不在配置中，改为禁用（不删除，可随时恢复）", entity.entity_id
+            )
+            ent_reg.async_update_entity(
+                entity.entity_id, disabled_by=er.RegistryEntryDisabler.INTEGRATION
+            )
+            added_unique_ids.discard(entity.unique_id)
+
     _async_manage_entities()
-    # 绑定监听：每当协调器数据更新时，触发动态管理
     entry.async_on_unload(coordinator.async_add_listener(_async_manage_entities))
 
 class IkuaiTracker(CoordinatorEntity[IkuaiCoordinator], BaseScannerEntity):
