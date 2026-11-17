@@ -6,11 +6,11 @@ from typing import Any
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers import entity_registry as er, translation
+from homeassistant.helpers import translation
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, LOGGER
+from .const import DOMAIN
 from .coordinator import IkuaiCoordinator
 
 async def async_setup_entry(
@@ -25,41 +25,28 @@ async def async_setup_entry(
 
     @callback
     def _async_manage_entities() -> None:
-        """动态管理实体的回调函数：增量添加与物理删除."""
-        # 从安全数据块获取规则
+        """增量添加：路由器上出现新 MAC 规则时创建对应实体.
+
+        实体注册后恒定：规则被删除后实体转为 unavailable（见 available），
+        规则重新出现即自动恢复。此处不做任何删除——API 降级返回空数据时
+        仅表现为实体暂不可用，绝不因数据抖动误删实体。
+        """
         security_data = coordinator.data.get("security", {})
         rules_data = security_data.get("mac_rules", {})
-        ent_reg = er.async_get(hass)
         new_entities = []
-        # 增量添加逻辑
         for rid in rules_data:
             # 统一使用 gwid 构造 UID
             uid = f"{coordinator.gwid}_sec_macrule_{rid}"
             if uid not in added_unique_ids:
-                # 直接创建对象，并将生成的 uid 传入类中
                 new_entities.append(IkuaiMacRuleSwitch(coordinator, rid, uid))
                 added_unique_ids.add(uid)
-        
+
         if new_entities:
             async_add_entities(new_entities)
 
-        # 获取当前集成实例名下的所有实体记录
-        entity_entries = er.async_entries_for_config_entry(ent_reg, entry.entry_id)
-        # 计算当前 API 返回的所有合法 UID 集合
-        current_valid_uids = {f"{coordinator.gwid}_sec_macrule_{rid}" for rid in rules_data}
-        
-        for entity in entity_entries:
-            # 只处理本平台(switch)且符合特定格式的实体
-            if entity.domain == "switch" and "_sec_macrule_" in entity.unique_id:
-                if entity.unique_id not in current_valid_uids:
-                    LOGGER.info("注销已移除的 MAC 规则实体: %s", entity.entity_id)
-                    ent_reg.async_remove(entity.entity_id)
-                    if entity.unique_id in added_unique_ids:
-                        added_unique_ids.remove(entity.unique_id)
-
     # 初次加载执行一次管理
     _async_manage_entities()
-    # 绑定监听：每当协调器数据更新时，触发动态管理
+    # 绑定监听：每当协调器数据更新时，增量添加新规则实体
     entry.async_on_unload(coordinator.async_add_listener(_async_manage_entities))
 
 class IkuaiMacRuleSwitch(CoordinatorEntity[IkuaiCoordinator], SwitchEntity):
@@ -100,6 +87,14 @@ class IkuaiMacRuleSwitch(CoordinatorEntity[IkuaiCoordinator], SwitchEntity):
         for key, path in mapping.items():
             if path in translations:
                 self._labels[key] = translations[path]
+
+    @property
+    def available(self) -> bool:
+        """规则仍在路由器上时可用；规则被删除后实体转为 unavailable."""
+        if not self.coordinator.data:
+            return False
+        rules = self.coordinator.data.get("security", {}).get("mac_rules", {})
+        return self._rule_id in rules
 
     @property
     def name(self) -> str | None:
