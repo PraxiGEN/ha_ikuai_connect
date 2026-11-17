@@ -162,10 +162,7 @@ class IkuaiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return IkuaiOptionsFlowHandler()
 
 class IkuaiOptionsFlowHandler(config_entries.OptionsFlowWithReload):
-    """处理集成选项、终端追踪及高级参数.
-
-    流结束后由框架自动 reload 集成（勿再注册 update_listener，二者不可共存）。
-    """
+    """处理集成选项、终端追踪及高级参数."""
 
     def __init__(self) -> None:
         """Initialize."""
@@ -177,9 +174,7 @@ class IkuaiOptionsFlowHandler(config_entries.OptionsFlowWithReload):
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """配置主菜单."""
-        # 整个流的工作副本。必须深拷贝：dict(entry.options) 顶层虽是新 dict，
-        # 嵌套的 tracker_config 仍共享引用，流内就地写会污染 entry.options
-        # （即使流中途 abort 也会写入，这正是历史上追踪配置丢 MAC 的根因之一）。
+        # 必须深拷贝：嵌套的 tracker_config 仍与 entry.options 共享引用，就地写会污染。
         if self._temp_options is None:
             self._temp_options = deepcopy(dict(self.config_entry.options))
 
@@ -282,9 +277,7 @@ class IkuaiOptionsFlowHandler(config_entries.OptionsFlowWithReload):
             except Exception as err:  # pylint: disable=broad-except
                 LOGGER.warning("离线终端扫描失败，仅使用在线列表: %s", err)
 
-            # 过滤掉已经在追踪列表中的设备。
-            # 历史脏 key 可能未归一化（大小写/冒号差异），必须统一归一后比对，
-            # 否则同一台设备会以两种字面不同的 key 重复写入 tracker_config。
+            # 历史脏 key 可能未归一化（大小写/冒号），须归一后比对，否则同设备重复写入。
             existing_trackers = {
                 normalize_mac(mac)
                 for mac in self._temp_options.get(CONF_TRACKER_CONFIG, {})
@@ -390,15 +383,13 @@ class IkuaiOptionsFlowHandler(config_entries.OptionsFlowWithReload):
                     removed_macs.append(mac)
 
             self._temp_options[CONF_TRACKER_CONFIG] = tracker_config
-            # 事件驱动删除：此处是实体唯一的合法删除点，立即精确移除，
-            # 不依赖任何轮询 diff 推断（历史误删的根源）。
-            # 删光全部设备是合法操作（tracker_config 为空 = 不追踪任何终端）。
+            # 事件驱动删除：实体唯一合法删除点，不依赖轮询 diff 推断（删光亦合法）。
             if removed_macs:
                 self._async_remove_tracker_entities(removed_macs)
             return self.async_create_entry(title="", data=self._temp_options)
 
         if not tracker_config:
-            # 无可移除设备，空列表无法提交，直接终止并提示
+            # 空列表无法提交，无可删设备直接终止
             return self.async_abort(reason="no_tracked_devices")
 
         current_options = [
@@ -421,7 +412,7 @@ class IkuaiOptionsFlowHandler(config_entries.OptionsFlowWithReload):
 
     @callback
     def _async_remove_tracker_entities(self, removed_macs: list[str]) -> None:
-        """删除被移除设备对应的追踪实体（事件驱动，唯一合法的实体删除点）."""
+        """删除被移除设备对应的追踪实体."""
         ent_reg = er.async_get(self.hass)
         removed_clean = {normalize_mac(mac).replace(":", "") for mac in removed_macs}
         for entity in er.async_entries_for_config_entry(

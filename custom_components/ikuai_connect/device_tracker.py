@@ -20,10 +20,7 @@ async def async_setup_entry(
     coordinator: IkuaiCoordinator = entry.runtime_data
     tracker_config = entry.options.get(CONF_TRACKER_CONFIG) or entry.data.get(CONF_TRACKER_CONFIG, {})
 
-    # 纯增量：只为配置中的 MAC 构造实体（幂等，重复 uid 由 entity_platform 复用注册表条目）。
-    # 实体注册后恒定：删除只发生在选项流 remove 步骤内（事件驱动），
-    # 本函数不做任何清理，也不监听协调器更新——tracker_config 仅因选项流变化，
-    # 选项流结束后的自动 reload 会重新执行本函数。
+    # 纯增量：删除只在选项流 remove 步骤内事件驱动执行，此处不清理也不监听协调器。
     new_entities = []
     for mac, conf in tracker_config.items():
         mac_clean = normalize_mac(mac).replace(":", "")

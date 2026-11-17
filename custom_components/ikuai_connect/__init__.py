@@ -35,8 +35,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: IkuaiConfigEntry) -> boo
     # 转发平台
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
-    # 选项流基类为 OptionsFlowWithReload，流结束后框架自动 reload；
-    # 不可再注册 update_listener（官方规定二者不可共存，会 raise ValueError）。
+    # 选项流为 OptionsFlowWithReload，流结束自动 reload，不可再注册 update_listener。
     return True
 
 async def async_unload_entry(hass: HomeAssistant, entry: IkuaiConfigEntry) -> bool:
