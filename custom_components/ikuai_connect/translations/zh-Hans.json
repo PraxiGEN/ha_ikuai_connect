@@ -67,6 +67,9 @@
       "no_devices_selected": "您没有选择任何设备。",
       "no_new_devices_found": "未发现未添加的新在线终端。",
       "cannot_connect": "无法连接到路由器，请检查地址与 Token。"
+    },
+    "abort": {
+      "no_tracked_devices": "当前没有已追踪的设备可供移除。"
     }
   },
   "selector": {

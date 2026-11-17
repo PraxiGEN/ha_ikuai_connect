@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+from copy import deepcopy
 from typing import Any
 
 import voluptuous as vol
@@ -15,6 +16,7 @@ from homeassistant.const import (
 )
 from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.selector import (
     NumberSelector,
     NumberSelectorConfig,
@@ -159,22 +161,22 @@ class IkuaiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """获取选项流处理器."""
         return IkuaiOptionsFlowHandler()
 
-class IkuaiOptionsFlowHandler(config_entries.OptionsFlow):
+class IkuaiOptionsFlowHandler(config_entries.OptionsFlowWithReload):
     """处理集成选项、终端追踪及高级参数."""
 
     def __init__(self) -> None:
         """Initialize."""
         self._selected_devices: list[str] = []
         self._discovered_map: dict[str, str] = {}
-        self._temp_options: dict[str, Any] = {}
+        self._temp_options: dict[str, Any] | None = None
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """配置主菜单."""
-        # 确保整个生命周期内 _temp_options 始终包含完整的当前配置
-        if not self._temp_options:
-            self._temp_options = dict(self.config_entry.options)
+        # 必须深拷贝：嵌套的 tracker_config 仍与 entry.options 共享引用，就地写会污染。
+        if self._temp_options is None:
+            self._temp_options = deepcopy(dict(self.config_entry.options))
 
         if user_input is not None:
             next_action = user_input.get("manage_action", "none")
@@ -275,8 +277,11 @@ class IkuaiOptionsFlowHandler(config_entries.OptionsFlow):
             except Exception as err:  # pylint: disable=broad-except
                 LOGGER.warning("离线终端扫描失败，仅使用在线列表: %s", err)
 
-            # 过滤掉已经在追踪列表中的设备
-            existing_trackers = self._temp_options.get(CONF_TRACKER_CONFIG, {})
+            # 历史脏 key 可能未归一化（大小写/冒号），须归一后比对，否则同设备重复写入。
+            existing_trackers = {
+                normalize_mac(mac)
+                for mac in self._temp_options.get(CONF_TRACKER_CONFIG, {})
+            }
             self._discovered_map = {}
 
             # 在线优先：先入在线终端（含实时 IP 与流量），近期离线终端作为补充追加在后。
@@ -372,10 +377,20 @@ class IkuaiOptionsFlowHandler(config_entries.OptionsFlow):
         tracker_config = dict(self._temp_options.get(CONF_TRACKER_CONFIG, {}))
 
         if user_input is not None:
+            removed_macs = []
             for mac in user_input.get("devices_to_remove", []):
-                tracker_config.pop(mac, None)
+                if tracker_config.pop(mac, None) is not None:
+                    removed_macs.append(mac)
+
             self._temp_options[CONF_TRACKER_CONFIG] = tracker_config
+            # 事件驱动删除：实体唯一合法删除点，不依赖轮询 diff 推断（删光亦合法）。
+            if removed_macs:
+                self._async_remove_tracker_entities(removed_macs)
             return self.async_create_entry(title="", data=self._temp_options)
+
+        if not tracker_config:
+            # 空列表无法提交，无可删设备直接终止
+            return self.async_abort(reason="no_tracked_devices")
 
         current_options = [
             {"value": mac, "label": f"{conf.get('name', mac)} ({mac})"}
@@ -394,3 +409,18 @@ class IkuaiOptionsFlowHandler(config_entries.OptionsFlow):
                 )
             }),
         )
+
+    @callback
+    def _async_remove_tracker_entities(self, removed_macs: list[str]) -> None:
+        """删除被移除设备对应的追踪实体."""
+        ent_reg = er.async_get(self.hass)
+        removed_clean = {normalize_mac(mac).replace(":", "") for mac in removed_macs}
+        for entity in er.async_entries_for_config_entry(
+            ent_reg, self.config_entry.entry_id
+        ):
+            if entity.domain != "device_tracker" or "_track_" not in entity.unique_id:
+                continue
+            # uid 形如 {gwid}_track_{mac_clean}，末段即无冒号小写 MAC
+            if entity.unique_id.rsplit("_track_", 1)[-1] in removed_clean:
+                LOGGER.info("移除追踪实体: %s", entity.entity_id)
+                ent_reg.async_remove(entity.entity_id)
