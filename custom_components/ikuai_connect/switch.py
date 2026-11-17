@@ -25,17 +25,11 @@ async def async_setup_entry(
 
     @callback
     def _async_manage_entities() -> None:
-        """增量添加：路由器上出现新 MAC 规则时创建对应实体.
-
-        实体注册后恒定：规则被删除后实体转为 unavailable（见 available），
-        规则重新出现即自动恢复。此处不做任何删除——API 降级返回空数据时
-        仅表现为实体暂不可用，绝不因数据抖动误删实体。
-        """
+        """增量添加新规则实体；不删除实体，规则消失仅表现为 unavailable."""
         security_data = coordinator.data.get("security", {})
         rules_data = security_data.get("mac_rules", {})
         new_entities = []
         for rid in rules_data:
-            # 统一使用 gwid 构造 UID
             uid = f"{coordinator.gwid}_sec_macrule_{rid}"
             if uid not in added_unique_ids:
                 new_entities.append(IkuaiMacRuleSwitch(coordinator, rid, uid))
@@ -44,9 +38,7 @@ async def async_setup_entry(
         if new_entities:
             async_add_entities(new_entities)
 
-    # 初次加载执行一次管理
     _async_manage_entities()
-    # 绑定监听：每当协调器数据更新时，增量添加新规则实体
     entry.async_on_unload(coordinator.async_add_listener(_async_manage_entities))
 
 class IkuaiMacRuleSwitch(CoordinatorEntity[IkuaiCoordinator], SwitchEntity):
