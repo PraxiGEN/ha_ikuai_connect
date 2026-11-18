@@ -22,7 +22,7 @@ from homeassistant.const import (
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
-from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.device_registry import ChildDeviceInfo
 from homeassistant.helpers.entity import EntityCategory
 
 from .const import DOMAIN
@@ -548,12 +548,10 @@ class IkuaiDiskSensor(CoordinatorEntity[IkuaiCoordinator], SensorEntity):
         model = disk_data.get("base_info", {}).get("model", disk_id)
         
         self._attr_unique_id = f"{coordinator.gwid}_disk_{disk_id}_{description.key}"
-        self._attr_device_info = DeviceInfo(
+        self._attr_device_info = ChildDeviceInfo(
             identifiers={(DOMAIN, f"{coordinator.host}_disk_{disk_id}")},
             name=f"存储: {model}",
-            manufacturer="iKuai",
-            model=model,
-            via_device=(DOMAIN, coordinator.host),
+            parent_device_id=coordinator.parent_device_id,
         )
 
     @property
