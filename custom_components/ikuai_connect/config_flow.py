@@ -53,7 +53,6 @@ class IkuaiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             defaults = {}
 
         schema = {}
-
         # 只有在初次安装时显示集成标题
         if not is_reconfigure:
             schema[
@@ -83,10 +82,10 @@ class IkuaiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             token = user_input[CONF_TOKEN]
             name = user_input[CONF_NAME]
 
-            # 校验名称唯一性，防止 entity_id 冲突出现 _2
+            # 校验名称唯一性，防止主设备名冲突导致 entity_id 出现 _2
             current_entries = self._async_current_entries()
             for entry in current_entries:
-                if entry.title == name:
+                if entry.data.get(CONF_NAME) == name:
                     errors[CONF_NAME] = "name_exists"
                     break
 
@@ -98,12 +97,13 @@ class IkuaiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     # 设置物理唯一 ID (基于 Host 地址)
                     await self.async_set_unique_id(host.lower())
                     self._abort_if_unique_id_configured()
-
+                    # 条目标题 = 主机地址（去协议前缀，保留端口以区分多实例）；名称落库供主设备名使用
                     return self.async_create_entry(
-                        title=name,
+                        title=host.split("//")[-1],
                         data={
                             CONF_HOST: host,
                             CONF_TOKEN: token,
+                            CONF_NAME: name,
                             CONF_TRACKER_CONFIG: {},
                         },
                     )
@@ -285,8 +285,6 @@ class IkuaiOptionsFlowHandler(config_entries.OptionsFlowWithReload):
             self._discovered_map = {}
 
             # 在线优先：先入在线终端（含实时 IP 与流量），近期离线终端作为补充追加在后。
-            # 同一 MAC 两者都有时保留在线记录（离线记录的 IP 可能已过期），用 setdefault 保证不覆盖。
-            # 注意：离线终端必须保留（#33 明确要求可添加当下不在线的设备），此处只调顺序、不改可选项集合。
             for item in online_list:
                 mac = normalize_mac(item.get("mac", ""))
                 if mac and mac not in existing_trackers:

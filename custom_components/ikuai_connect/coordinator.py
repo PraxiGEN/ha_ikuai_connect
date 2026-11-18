@@ -5,8 +5,9 @@ from datetime import timedelta
 import time
 from typing import Any
 
+from homeassistant.const import CONF_NAME
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.device_registry import ChildDeviceInfo, DeviceInfo
 from .helpers import extract_name_from_label, normalize_mac
 from .const import (
     DOMAIN,
@@ -44,6 +45,7 @@ class IkuaiCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         )
         self.api = api
         self.host = host
+        self.parent_device_id: str | None = None  # 父设备注册表 id，setup 中赋值
         self.gwid = None  # 主网关 ID
         self.last_presence_id = None
         self.last_ddns_id = None
@@ -499,10 +501,9 @@ class IkuaiCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     # 主设备        
     @property
     def device_info(self) -> DeviceInfo:
-        device_name = self.config_entry.title
         return DeviceInfo(
             identifiers={(DOMAIN, self.host)},
-            name=f"{device_name} 负载监控",
+            name=self.config_entry.data.get(CONF_NAME),
             manufacturer="iKuai",
             model="iKuai Router",
             sw_version=self._sw_version,
@@ -512,33 +513,27 @@ class IkuaiCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     
     # 接口管理子设备    
     @property
-    def iface_mgmt_device_info(self) -> DeviceInfo:
-        return DeviceInfo(
+    def iface_mgmt_device_info(self) -> ChildDeviceInfo:
+        return ChildDeviceInfo(
             identifiers={(DOMAIN, f"{self.host}_iface_mgmt")},
-            name=f"{self.config_entry.title} 接口监控",
-            manufacturer="iKuai",
-            model="Interface Monitor",
-            via_device=(DOMAIN, self.host),
+            name="接口监控",
+            parent_device_id=self.parent_device_id,
         )
      
     # 定义安全管理子设备
     @property
-    def security_device_info(self) -> DeviceInfo:
-        return DeviceInfo(
+    def security_device_info(self) -> ChildDeviceInfo:
+        return ChildDeviceInfo(
             identifiers={(DOMAIN, f"{self.host}_security")},
-            name=f"{self.config_entry.title} 安全中心",
-            manufacturer="iKuai",
-            model="Security & Firewall",
-            via_device=(DOMAIN, self.host),
+            name="安全中心",
+            parent_device_id=self.parent_device_id,
         )
 
     # 升级与备份管理子设备    
     @property
-    def maintenance_device_info(self) -> DeviceInfo:
-        return DeviceInfo(
+    def maintenance_device_info(self) -> ChildDeviceInfo:
+        return ChildDeviceInfo(
             identifiers={(DOMAIN, f"{self.host}_maintenance")},
-            name=f"{self.config_entry.title} 系统维护",
-            manufacturer="iKuai",
-            model="System Maintenance",
-            via_device=(DOMAIN, self.host),
+            name="系统维护",
+            parent_device_id=self.parent_device_id,
         )
