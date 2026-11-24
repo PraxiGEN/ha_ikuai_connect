@@ -14,7 +14,8 @@ PLATFORMS: Final = [
     Platform.BUTTON, 
     Platform.EVENT, 
     Platform.SELECT,
-    Platform.SWITCH
+    Platform.SWITCH,
+    Platform.UPDATE,
 ]
 
 CONF_TRACKER_CONFIG: Final = "tracker_config"
