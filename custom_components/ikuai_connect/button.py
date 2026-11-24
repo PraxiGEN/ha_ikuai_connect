@@ -39,13 +39,6 @@ BUTTON_TYPES: Final[tuple[IkuaiButtonEntityDescription, ...]] = (
         action_type="check_upgrade",
     ),
     IkuaiButtonEntityDescription(
-        key="start_upgrade",
-        name="Start Firmware Upgrade",
-        translation_key="start_upgrade",
-        icon="mdi:cloud-download",
-        action_type="start_upgrade",
-    ),
-    IkuaiButtonEntityDescription(
         key="create_backup",
         name="Backup System Configuration",
         translation_key="create_backup",
@@ -101,15 +94,13 @@ class IkuaiButton(CoordinatorEntity[IkuaiCoordinator], ButtonEntity):
                 await api.trigger_immediate_reboot()
             elif action == "check_upgrade":
                 await api.check_upgrade()
-            elif action == "start_upgrade":
-                await api.start_upgrade()
             elif action == "backup":
                 await api.trigger_backup()
 
             # 发送翻译后的系统通知
             await self._send_notification(action)
             # 针对异步耗时操作，后台延迟刷新数据（不阻塞按钮响应）
-            if action in ["start_upgrade", "backup", "check_upgrade"]:
+            if action in ["backup", "check_upgrade"]:
                 self.hass.async_create_task(self._delayed_refresh())
 
         except Exception as err:

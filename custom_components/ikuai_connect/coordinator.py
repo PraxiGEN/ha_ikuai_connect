@@ -371,22 +371,17 @@ class IkuaiCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             up_stat_info = up_status_res.get("auto_upgrade", {}) if isinstance(up_status_res, dict) else {}
             curr_ver = up_data.get("system_ver")
             new_ver = up_data.get("new_system_ver")
-            # status: 0=空闲, 1=下载中, 2=安装中, <0=失败
-            status_code = up_stat_info.get("status", 0)
-            status_msg = up_stat_info.get("status_msg", "")
-            # 计算显示状态逻辑
-            if status_code != 0:
-                # 正在升级（下载或安装）
-                display_up = status_msg if status_msg else "正在处理升级..."
-            elif new_ver and new_ver != curr_ver:
-                # 有新版本
-                display_up = f"发现新版本: {new_ver}"
-            else:
-                # 已是最新
-                display_up = "已是最新版本"
+            # 新固件给升级状态字段加 auto_upgrade_ 前缀，旧字段仍需兼容。
+            status_code = up_stat_info.get(
+                "auto_upgrade_status", up_stat_info.get("status", 0)
+            )
+            status_msg = up_stat_info.get(
+                "auto_upgrade_status_msg", up_stat_info.get("status_msg", "")
+            )
 
             processed_maint = {
-                "upgrade_display_state": display_up,
+                "upgrade_status": status_code,
+                "upgrade_status_msg": status_msg,
                 "upgrade_detail": {
                     "current_version": curr_ver,
                     "latest_version": new_ver,

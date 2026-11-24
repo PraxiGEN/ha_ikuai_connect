@@ -187,17 +187,6 @@
           "lines": { "name": "各线路详情" }
         }
       },
-      "upgrade_status": { 
-        "name": "固件更新状态",
-        "state_attributes": {
-          "current_version": { "name": "当前版本" },
-          "latest_version": { "name": "最新版本" },
-          "version_type": { "name": "版本类型" },
-          "build_date": { "name": "编译日期" },
-          "update_content": { "name": "更新内容" },
-          "last_check": { "name": "最后检查时间" }
-        }
-      },
       "firmware_version": {
         "name": "版本固件",
         "state_attributes": {
@@ -231,10 +220,22 @@
         }
       }
     },
+    "update": {
+      "firmware_update": {
+        "name": "固件更新",
+        "state_attributes": {
+          "current_version": { "name": "当前版本" },
+          "latest_version": { "name": "最新版本" },
+          "version_type": { "name": "版本类型" },
+          "build_date": { "name": "编译日期" },
+          "update_content": { "name": "更新内容" },
+          "last_check": { "name": "最后检查时间" }
+        }
+      }
+    },
     "button": {
       "reboot": { "name": "重启路由器" },
       "check_update": { "name": "检查固件更新" },
-      "start_upgrade": { "name": "开始固件升级" },
       "create_backup": { "name": "立即备份系统配置" }
     },
     "event": { 
@@ -351,10 +352,6 @@
     "check_upgrade": {
       "name": "检测更新",
       "description": "正在向云端检测新版本，请稍候查看系统日志。"
-    },
-    "start_upgrade": {
-      "name": "固件升级",
-      "description": "系统升级指令已触发，请勿断电或重启设备。"
     },
     "backup": {
       "name": "系统备份",

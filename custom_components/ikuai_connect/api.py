@@ -173,25 +173,11 @@ class IkuaiAPI:
 
     # --- 基础监控类 (System Monitoring) ---
     async def get_system_info(self) -> dict[str, Any]:
-        """
-        获取系统实时状态 (/api/v4.0/monitoring/system)
-        返回字段说明:
-        - sysinfo.cpu: [核心平均, 核心1, ...] (str 数组, 带%)
-        - sysinfo.memory: {total, available, free, used(str)}
-        - sysinfo.uptime: 运行秒数 (int)
-        - sysinfo.cputemp: [温度1, ...] (int 数组)
-        - sysinfo.verinfo: {version, verstring, arch, sysbit}
-        - sysinfo.online_user: {count, count_2g, count_5g, count_wired, count_wireless}
-        - sysinfo.stream: {upload, download, total_up, total_down, connect_num}
-        """
+        """获取系统实时状态 (/api/v4.0/monitoring/system)"""
         return await self._make_request("GET", "/api/v4.0/monitoring/system")
 
     async def get_lan_devices(self) -> dict[str, Any]:
-        """
-        获取IPv4在线终端统计 (/api/v4.0/monitoring/clients-online)
-        返回字段说明:
-        - data: [ {mac, ip_addr, upload, download, total_up, total_down, termname, comment, client_vendor, interface} ]
-        """
+        """获取IPv4在线终端统计 (/api/v4.0/monitoring/clients-online)"""
         return await self._make_request("GET", "/api/v4.0/monitoring/clients-online?limit=500")
 
     async def get_wifi_stats(self) -> dict[str, Any]:
@@ -208,12 +194,7 @@ class IkuaiAPI:
 
     # --- 接口与流量类 (Network Interfaces) ---
     async def get_iface_status(self) -> dict[str, Any]:
-        """
-        获取线路状态监控 (/api/v4.0/monitoring/interfaces-status)
-        返回字段说明:
-        - iface_check: [ {interface, parent_interface, ip_addr, result, internet} ]
-        - iface_stream: [ {interface, upload, download, total_up, total_down, ip_addr} ]
-        """
+        """获取线路状态监控 (/api/v4.0/monitoring/interfaces-status)"""
         return await self._make_request("GET", "/api/v4.0/monitoring/interfaces-status")
 
     # async def get_iface_config(self) -> dict[str, Any]:
@@ -222,11 +203,7 @@ class IkuaiAPI:
 
     # --- 日志与事件类 (Logs & Events) ---
     async def get_message_center(self) -> dict[str, Any]:
-        """获取消息中心列表 (/api/v4.0/log/message-center)
-
-        按 id 降序（order_by=id）；但 message-center 条目本身不返回 id/timestamp，
-        增量去重由 coordinator 按内容签名完成，故此处仅负责拉取最新一页。
-        """
+        """获取消息中心列表 (/api/v4.0/log/message-center)"""
         params = "limit=10&order=desc&order_by=id"
         return await self._make_request("GET", f"/api/v4.0/log/message-center?{params}")
 
@@ -246,11 +223,7 @@ class IkuaiAPI:
         return await self._make_request("GET", f"/api/v4.0/log/wireless?{params}")
 
     async def get_system_logs(self) -> dict[str, Any]:
-        """获取系统运行日志 (GET /api/v4.0/log/system).
-
-        返回条目含 id / timestamp / content（真实固件实测字段），
-        以 id 降序；增量游标由 coordinator 的 get_new_events 按 id 处理。
-        """
+        """获取系统运行日志 (GET /api/v4.0/log/system)."""
         params = "limit=10&order=desc&order_by=id"
         return await self._make_request("GET", f"/api/v4.0/log/system?{params}")
 
@@ -278,19 +251,12 @@ class IkuaiAPI:
 
     # --- 存储与维护类 (Storage & Maintenance) ---
     async def get_disks(self) -> dict[str, Any]:
-        """
-        获取系统磁盘信息 (/api/v4.0/system/disks)
-        返回字段说明:
-        - data: [ {disk, model, type, size, system, partition: [ {name, mounted: {mt_total, mt_used, mt_uses, mt_name, mt_purpose}} ]} ]
-        """
+        """获取系统磁盘信息 (/api/v4.0/system/disks)"""
         return await self._make_request("GET", "/api/v4.0/system/disks")
 
     # --- 服务支持查询接口 (Service Response Support) ---
     async def get_client_traffic_summary(self) -> dict[str, Any]:
-        """
-        获取终端当日流量统计排行 (/api/v4.0/monitoring/clients-traffic-summary)
-        用于服务 ikuai_connect.get_traffic_ranking
-        """
+        """获取终端当日流量统计排行 (/api/v4.0/monitoring/clients-traffic-summary)"""
         return await self._make_request("GET", "/api/v4.0/monitoring/clients-traffic-summary?limit=100")
 
     async def get_client_protocol_stats(self, mac: str, ip: str) -> dict[str, Any]:
@@ -299,11 +265,7 @@ class IkuaiAPI:
         return await self._make_request("GET", endpoint)
 
     async def get_offline_history(self, limit: int = 20) -> dict[str, Any]:
-        """
-        获取终端离线统计历史 (/api/v4.0/monitoring/clients-offline)
-        用于集成服务：ikuai_connect.get_offline_history
-        limit 控制返回条数，选项流扫描离线设备时可调大以覆盖更多历史终端。
-        """
+        """获取终端离线统计历史 (/api/v4.0/monitoring/clients-offline)"""
         # 使用下线时间降序排列，取最近 limit 条记录
         params = f"limit={limit}&order=desc&order_by=logout_time&page=1"
         endpoint = f"/api/v4.0/monitoring/clients-offline?{params}"

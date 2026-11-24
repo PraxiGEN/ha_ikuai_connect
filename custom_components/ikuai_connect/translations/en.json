@@ -187,17 +187,6 @@
           "lines": { "name": "Per-Line Details" }
         }
       },
-      "upgrade_status": {
-        "name": "Firmware Upgrade Status",
-        "state_attributes": {
-          "current_version": { "name": "Current Version" },
-          "latest_version": { "name": "Latest Version" },
-          "version_type": { "name": "Version Type" },
-          "build_date": { "name": "Build Date" },
-          "update_content": { "name": "Update Content" },
-          "last_check": { "name": "Last Check" }
-        }
-      },
       "firmware_version": {
         "name": "Firmware Version",
         "state_attributes": {
@@ -231,10 +220,22 @@
         }
       }
     },
+    "update": {
+      "firmware_update": {
+        "name": "Firmware Update",
+        "state_attributes": {
+          "current_version": { "name": "Current Version" },
+          "latest_version": { "name": "Latest Version" },
+          "version_type": { "name": "Version Type" },
+          "build_date": { "name": "Build Date" },
+          "update_content": { "name": "Update Content" },
+          "last_check": { "name": "Last Check" }
+        }
+      }
+    },
     "button": {
       "reboot": { "name": "Reboot Router" },
       "check_update": { "name": "Check Firmware Update" },
-      "start_upgrade": { "name": "Start Firmware Upgrade" },
       "create_backup": { "name": "Backup System Configuration Now" }
     },
     "event": {
@@ -351,10 +352,6 @@
     "check_upgrade": {
       "name": "Check for Updates",
       "description": "Checking for new versions from the cloud. Please check the system logs shortly."
-    },
-    "start_upgrade": {
-      "name": "Firmware Upgrade",
-      "description": "The system upgrade command has been triggered. Do not power off or reboot the device."
     },
     "backup": {
       "name": "System Backup",
