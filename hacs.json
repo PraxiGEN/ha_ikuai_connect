@@ -1,4 +1,7 @@
 {
   "name": "iKuai Connect",
-  "homeassistant": "2026.9.0"
+  "homeassistant": "2026.9.0",
+  "zip_release": true,
+  "filename": "ikuai_connect.zip",
+  "hide_default_branch": true
 }
