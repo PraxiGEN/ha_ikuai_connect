@@ -318,14 +318,6 @@ MAINTENANCE_SENSORS: Final[tuple[IkuaiSensorEntityDescription, ...]] = (
         },
     ),
     IkuaiSensorEntityDescription(
-        key="upgrade_status",
-        name="Firmware Upgrade Status",
-        translation_key="upgrade_status",
-        icon="mdi:update",
-        value_fn=lambda d: d.get("maintenance", {}).get("upgrade_display_state"),
-        attr_fn=lambda d: d.get("maintenance", {}).get("upgrade_detail", {}),
-    ),
-    IkuaiSensorEntityDescription(
         key="backup_status",
         name="Latest Backup File",
         translation_key="latest_backup",
